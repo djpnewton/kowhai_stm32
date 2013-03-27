@@ -13,7 +13,7 @@
 #
 
 ##############################################################################################
-# Start of default section
+# Start of tools section
 #
 
 TRGT = arm-none-eabi-
@@ -24,23 +24,8 @@ BIN  = $(CP) -O ihex
 
 MCU  = cortex-m4
 
-# List all default C defines here, like -D_DEBUG=1
-DDEFS =
-
-# List all default ASM defines here, like -D_DEBUG=1
-DADEFS = 
-
-# List all default directories to look for include files here
-DINCDIR = 
-
-# List the default directory to look for the libraries here
-DLIBDIR =
-
-# List all default libraries here
-DLIBS = 
-
 #
-# End of default section
+# End of tools section
 ##############################################################################################
 
 ##############################################################################################
@@ -50,7 +35,7 @@ DLIBS =
 # 
 # Define project name and Ram/Flash mode here
 PROJECT        = test
-RUN_FROM_FLASH = 0
+RUN_FROM_FLASH = 1
 USE_HARD_FPU   = 1
 HEAP_SIZE      = 8192
 STACK_SIZE     = 2048
@@ -77,13 +62,15 @@ endif
 
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = 
+UDEFS = -DUSE_STDPERIPH_DRIVER
 
 # Define ASM defines here
 UADEFS = 
 
 # List C source files here
 SRC  = ./cmsis/device/system_stm32f4xx.c \
+       ./cmsis/device/stm32f4xx_gpio.c \
+       ./cmsis/device/stm32f4xx_rcc.c \
        ./src/syscalls.c \
        ./src/main.c
 
@@ -106,22 +93,27 @@ OPT = -O0
 #OPT = -O2 -falign-functions=16 -fno-inline -fomit-frame-pointer
 
 #
+# Define openocd flash commands here
+#
+OPENOCD_FLASH_CMDS=-c init -c halt -c 'sleep 10' -c 'flash write_image erase unlock $(FULL_PRJ).elf' -c shutdown
+
+#
 # End of user defines
 ##############################################################################################
 
 
-INCDIR  = $(patsubst %,-I%,$(DINCDIR) $(UINCDIR))
-LIBDIR  = $(patsubst %,-L%,$(DLIBDIR) $(ULIBDIR))
+INCDIR  = $(patsubst %,-I%,$(UINCDIR))
+LIBDIR  = $(patsubst %,-L%,$(ULIBDIR))
 
 ifeq ($(RUN_FROM_FLASH), 0)
-DEFS    = $(DDEFS) $(UDEFS) -DRUN_FROM_FLASH=0 -DVECT_TAB_SRAM
+DEFS    = $(UDEFS) -DRUN_FROM_FLASH=0 -DVECT_TAB_SRAM
 else
-DEFS    = $(DDEFS) $(UDEFS) -DRUN_FROM_FLASH=1
+DEFS    = $(UDEFS) -DRUN_FROM_FLASH=1
 endif
 
-ADEFS   = $(DADEFS) $(UADEFS) -D__HEAP_SIZE=$(HEAP_SIZE) -D__STACK_SIZE=$(STACK_SIZE)
+ADEFS   = $(UADEFS) -D__HEAP_SIZE=$(HEAP_SIZE) -D__STACK_SIZE=$(STACK_SIZE)
 OBJS    = $(ASRC:.s=.o) $(SRC:.c=.o)
-LIBS    = $(DLIBS) $(ULIBS)
+LIBS    = $(ULIBS)
 MCFLAGS = -mthumb -mcpu=$(MCU) $(FPU)
 
 ASFLAGS  = $(MCFLAGS) $(OPT) -g -gdwarf-2 -Wa,-amhls=$(<:.s=.lst) $(ADEFS)
@@ -140,6 +132,11 @@ CPFLAGS += -MD -MP -MF .dep/$(@F).d
 
 all: $(OBJS) $(FULL_PRJ).elf $(FULL_PRJ).hex
 
+flash:
+	openocd -f openocd.cfg $(OPENOCD_FLASH_CMDS)
+
+debug:
+	openocd -f openocd.cfg
 
 %.o : %.c
 	$(CC) -c $(CPFLAGS) -I . $(INCDIR) $< -o $@

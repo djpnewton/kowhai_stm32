@@ -1,106 +1,73 @@
-/****************************************************************************
-*  Copyright (c) 2012 by Michael Fischer. All rights reserved.
-*
-*  Redistribution and use in source and binary forms, with or without 
-*  modification, are permitted provided that the following conditions 
-*  are met:
-*  
-*  1. Redistributions of source code must retain the above copyright 
-*     notice, this list of conditions and the following disclaimer.
-*  2. Redistributions in binary form must reproduce the above copyright
-*     notice, this list of conditions and the following disclaimer in the 
-*     documentation and/or other materials provided with the distribution.
-*  3. Neither the name of the author nor the names of its contributors may 
-*     be used to endorse or promote products derived from this software 
-*     without specific prior written permission.
-*
-*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
-*  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
-*  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS 
-*  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL 
-*  THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
-*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
-*  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS 
-*  OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED 
-*  AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
-*  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
-*  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
-*  SUCH DAMAGE.
-*
-****************************************************************************
-*  History:
-*
-*  03.06.2012  mifi  First Version for the STM3240G-EVAL board.
-*  27.12.2012  mifi  Tested with STM32F4-Discovery too.
-****************************************************************************/
 #define __MAIN_C__
 
+#include "stm32f4xx_conf.h"
+#include "stm32f4_discovery.h"
 #include <stdint.h>
 
-/*=========================================================================*/
-/*  DEFINE: All Structures and Common Constants                            */
-/*=========================================================================*/
-
-/*=========================================================================*/
-/*  DEFINE: Prototypes                                                     */
-/*=========================================================================*/
-
-/*=========================================================================*/
-/*  DEFINE: Definition of all local Data                                   */
-/*=========================================================================*/
-static const uint32_t d  = 7;
-static const float    fd = 5.3f;
-static uint32_t       dd = 8;
-
-/* Must be 0, BSS must be cleared by the startup */
-static uint32_t       must_zero_after_startup;
-
-/*=========================================================================*/
-/*  DEFINE: All code exported                                              */
-/*=========================================================================*/
-
-/***************************************************************************/
-/*  main                                                                   */
-/***************************************************************************/
-int main (void)
+#ifdef  USE_FULL_ASSERT
+void assert_failed(uint8_t* file, uint32_t line)
 {
-  uint32_t a  = 1;
-  uint32_t b  = 2;
-  uint32_t c  = 0;
-  float    fa = 1.3f;
-  float    fb = 2.7f;
-  float    fc = 3.9f;
-  
-  fa = fa + fd;
-  a  = a + d + dd + must_zero_after_startup;
-  
-  /* A must be 16 here */
-  if (a != 16) while (1) {};
-    
+  /* Infinite loop */
   while (1)
   {
-    a++;
-    b++;
-    c = a + b;
-    
-    fa = fa + 2.6f;
-    fb = fb + 1.67f;
-    fc = fa + fb;
   }
+}
+#endif
 
-  /*
-   * Prevent compiler warnings
-   */
-  (void)fc;
-  (void)c;   
-  
-  /*
-   * This return here make no sense.
-   * But to prevent the compiler warning:
-   * "return type of 'main' is not 'int'
-   * we use an int as return :-)
-   */ 
-  return(0);
+void Delay(__IO uint32_t nCount)
+{
+  while(nCount--)
+  {
+  }
 }
 
-/*** EOF ***/
+int main (void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;       
+    GPIO_StructInit(&GPIO_InitStructure); 
+
+    /* GPIOD Periph clock enable */
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+
+    /* Configure PD12, PD13, PD14 and PD15 in output pushpull mode */
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13| GPIO_Pin_14| GPIO_Pin_15;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+    while (1)
+    {
+        /* PD12 to be toggled */
+        GPIO_SetBits(GPIOD, GPIO_Pin_12);
+
+        /* Insert delay */
+        Delay(0x3FFFFF);
+
+        /* PD13 to be toggled */
+        GPIO_SetBits(GPIOD, GPIO_Pin_13);
+
+        /* Insert delay */
+        Delay(0x3FFFFF);
+
+        /* PD14 to be toggled */
+        GPIO_SetBits(GPIOD, GPIO_Pin_14);
+
+        /* Insert delay */
+        Delay(0x3FFFFF);
+
+        /* PD15 to be toggled */
+        GPIO_SetBits(GPIOD, GPIO_Pin_15);
+
+        /* Insert delay */
+        Delay(0x7FFFFF);
+
+        GPIO_ResetBits(GPIOD, GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15);
+
+        /* Insert delay */
+        Delay(0xFFFFFF);
+    }
+
+    return 0;
+}
