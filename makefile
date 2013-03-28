@@ -62,17 +62,33 @@ endif
 
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS = -DUSE_STDPERIPH_DRIVER
+UDEFS = -DUSE_STDPERIPH_DRIVER -DUSE_USB_OTG_FS
 
 # Define ASM defines here
 UADEFS = 
 
 # List C source files here
 SRC  = ./cmsis/device/system_stm32f4xx.c \
-       ./cmsis/device/stm32f4xx_gpio.c \
-       ./cmsis/device/stm32f4xx_rcc.c \
+       ./STM32F4xx_StdPeriph_Driver/src/misc.c \
+       ./STM32F4xx_StdPeriph_Driver/src/stm32f4xx_exti.c \
+       ./STM32F4xx_StdPeriph_Driver/src/stm32f4xx_gpio.c \
+       ./STM32F4xx_StdPeriph_Driver/src/stm32f4xx_rcc.c \
+       ./STM32F4xx_StdPeriph_Driver/src/stm32f4xx_syscfg.c \
+       ./STM32_USB_Device_Library/Core/src/usbd_core.c \
+       ./STM32_USB_Device_Library/Core/src/usbd_ioreq.c \
+       ./STM32_USB_Device_Library/Core/src/usbd_req.c \
+       ./STM32_USB_Device_Library/Class/hid/src/usbd_hid_core.c \
+       ./STM32_USB_OTG_Driver/src/usb_core.c \
+       ./STM32_USB_OTG_Driver/src/usb_dcd.c \
+       ./src/stm32f4_discovery.c \
        ./src/syscalls.c \
+       ./src/usb_bsp.c \
+       ./src/usbd_desc.c \
+       ./src/usbd_usr.c \
        ./src/main.c
+
+       #./STM32_USB_OTG_Driver/src/usb_hcd.c \
+       #./STM32_USB_OTG_Driver/src/usb_otg.c \
 
 # List ASM source files here
 ASRC = ./cmsis/device/startup_stm32f4xx.s
@@ -80,7 +96,11 @@ ASRC = ./cmsis/device/startup_stm32f4xx.s
 # List all user directories here
 UINCDIR = ./inc \
           ./cmsis/core \
-          ./cmsis/device
+          ./cmsis/device \
+          ./STM32F4xx_StdPeriph_Driver/inc/\
+          ./STM32_USB_Device_Library/Core/inc \
+          ./STM32_USB_Device_Library/Class/hid/inc \
+          ./STM32_USB_OTG_Driver/inc
 
 # List the user directory to look for the libraries here
 ULIBDIR =
