@@ -105,7 +105,7 @@ void led_app(void)
 
 int main (void)
 {
-    //usb_app();
-    led_app();
+    usb_app();
+    //led_app();
     return 0;
 }

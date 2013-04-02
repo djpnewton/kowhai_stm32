@@ -80,7 +80,9 @@ SRC  = ./cmsis/device/system_stm32f4xx.c \
        ./STM32_USB_Device_Library/Class/hid/src/usbd_hid_core.c \
        ./STM32_USB_OTG_Driver/src/usb_core.c \
        ./STM32_USB_OTG_Driver/src/usb_dcd.c \
+       ./STM32_USB_OTG_Driver/src/usb_dcd_int.c \
        ./src/stm32f4_discovery.c \
+       ./src/stm32f4xx_it.c \
        ./src/syscalls.c \
        ./src/usb_bsp.c \
        ./src/usbd_desc.c \
