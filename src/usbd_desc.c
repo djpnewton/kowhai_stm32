@@ -54,10 +54,10 @@
 #define USBD_LANGID_STRING            0x409
 #define USBD_MANUFACTURER_STRING      "DJP"
 
-#define USBD_PRODUCT_HS_STRING        "Joystick in HS mode"
+#define USBD_PRODUCT_HS_STRING        "Comms (HS)"
 #define USBD_SERIALNUMBER_HS_STRING   "00000000011B"
 
-#define USBD_PRODUCT_FS_STRING        "Joystick in FS Mode"
+#define USBD_PRODUCT_FS_STRING        "Comms (FS)"
 #define USBD_SERIALNUMBER_FS_STRING   "00000000011C"
 
 #define USBD_CONFIGURATION_HS_STRING  "HID Config"

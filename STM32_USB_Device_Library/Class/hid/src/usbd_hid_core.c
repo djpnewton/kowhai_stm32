@@ -100,6 +100,8 @@ static uint8_t  USBD_HID_Setup (void  *pdev,
 static uint8_t  *USBD_HID_GetCfgDesc (uint8_t speed, uint16_t *length);
 
 static uint8_t  USBD_HID_DataIn (void  *pdev, uint8_t epnum);
+
+static uint8_t  USBD_HID_DataOut (void  *pdev, uint8_t epnum);
 /**
   * @}
   */ 
@@ -116,7 +118,7 @@ USBD_Class_cb_TypeDef  USBD_HID_cb =
   NULL, /*EP0_TxSent*/  
   NULL, /*EP0_RxReady*/
   USBD_HID_DataIn, /*DataIn*/
-  NULL, /*DataOut*/
+  USBD_HID_DataOut,/*DataOut*/
   NULL, /*SOF */
   NULL,
   NULL,      
@@ -126,32 +128,29 @@ USBD_Class_cb_TypeDef  USBD_HID_cb =
 #endif  
 };
 
-#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-  #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
-  #endif
-#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */        
 __ALIGN_BEGIN static uint32_t  USBD_HID_AltSet  __ALIGN_END = 0;
 
-#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-  #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
-  #endif
-#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */      
 __ALIGN_BEGIN static uint32_t  USBD_HID_Protocol  __ALIGN_END = 0;
 
-#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-  #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
-  #endif
-#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */  
 __ALIGN_BEGIN static uint32_t  USBD_HID_IdleState __ALIGN_END = 0;
 
-#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-  #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
-  #endif
-#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */ 
+__ALIGN_BEGIN static uint8_t HID_RAW_ReportDesc[] __ALIGN_END =
+{
+    0x06, 0x00, 0xFF,       // usage page
+    0x0A, 0x00, 0x01,       // usage
+    0xA1, 0x01,             // Collection 0x01
+    0x75, 0x08,             // report size = 8 bits
+    0x15, 0x00,             // logical minimum = 0
+    0x26, 0xFF, 0x00,       // logical maximum = 255
+    0x95, HID_OUT_PACKET,   // report count
+    0x09, 0x01,             // usage
+    0x81, 0x02,             // Input (array)
+    0x95, HID_IN_PACKET,    // report count
+    0x09, 0x02,             // usage
+    0x91, 0x02,             // Output (array)
+    0xC0                    // end collection
+}; 
+
 /* USB HID device Configuration Descriptor */
 __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_END =
 {
@@ -167,18 +166,18 @@ __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_E
   0xE0,         /*bmAttributes: bus powered and Support Remote Wake-up */
   0x32,         /*MaxPower 100 mA: this current is used for detecting Vbus*/
   
-  /************** Descriptor of Joystick Mouse interface ****************/
+  /************** Descriptor of RAW HID interface ****************/
   /* 09 */
   0x09,         /*bLength: Interface Descriptor size*/
   USB_INTERFACE_DESCRIPTOR_TYPE,/*bDescriptorType: Interface descriptor type*/
   0x00,         /*bInterfaceNumber: Number of Interface*/
   0x00,         /*bAlternateSetting: Alternate setting*/
-  0x01,         /*bNumEndpoints*/
+  0x02,         /*bNumEndpoints*/
   0x03,         /*bInterfaceClass: HID*/
   0x01,         /*bInterfaceSubClass : 1=BOOT, 0=no boot*/
   0x02,         /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
   0,            /*iInterface: Index of string descriptor*/
-  /******************** Descriptor of Joystick Mouse HID ********************/
+  /******************** Descriptor of RAW HID ********************/
   /* 18 */
   0x09,         /*bLength: HID Descriptor size*/
   HID_DESCRIPTOR_TYPE, /*bDescriptorType: HID*/
@@ -187,75 +186,32 @@ __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_E
   0x00,         /*bCountryCode: Hardware target country*/
   0x01,         /*bNumDescriptors: Number of HID class descriptors to follow*/
   0x22,         /*bDescriptorType*/
-  HID_MOUSE_REPORT_DESC_SIZE,/*wItemLength: Total length of Report descriptor*/
+  sizeof(HID_RAW_ReportDesc),/*wItemLength: Total length of Report descriptor*/
   0x00,
-  /******************** Descriptor of Mouse endpoint ********************/
+  /******************** Descriptor of RAW HID IN endpoint ********************/
   /* 27 */
   0x07,          /*bLength: Endpoint Descriptor size*/
   USB_ENDPOINT_DESCRIPTOR_TYPE, /*bDescriptorType:*/
   
   HID_IN_EP,     /*bEndpointAddress: Endpoint Address (IN)*/
   0x03,          /*bmAttributes: Interrupt endpoint*/
-  HID_IN_PACKET, /*wMaxPacketSize: 4 Byte max */
+  HID_IN_PACKET, /*wMaxPacketSize*/
   0x00,
   0x0A,          /*bInterval: Polling Interval (10 ms)*/
   /* 34 */
+  /******************** Descriptor of RAW HID OUT endpoint ********************/
+  0x07,          /*bLength: Endpoint Descriptor size*/
+  USB_ENDPOINT_DESCRIPTOR_TYPE, /*bDescriptorType:*/
+  
+  HID_OUT_EP,    /*bEndpointAddress: Endpoint Address (IN)*/
+  0x03,          /*bmAttributes: Interrupt endpoint*/
+  HID_OUT_PACKET,/*wMaxPacketSize*/
+  0x00,
+  0x0A,          /*bInterval: Polling Interval (10 ms)*/
+  /* 41 */
 } ;
 
-#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-  #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
-  #endif
-#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */  
-__ALIGN_BEGIN static uint8_t HID_MOUSE_ReportDesc[HID_MOUSE_REPORT_DESC_SIZE] __ALIGN_END =
-{
-  0x05,   0x01,
-  0x09,   0x02,
-  0xA1,   0x01,
-  0x09,   0x01,
-  
-  0xA1,   0x00,
-  0x05,   0x09,
-  0x19,   0x01,
-  0x29,   0x03,
-  
-  0x15,   0x00,
-  0x25,   0x01,
-  0x95,   0x03,
-  0x75,   0x01,
-  
-  0x81,   0x02,
-  0x95,   0x01,
-  0x75,   0x05,
-  0x81,   0x01,
-  
-  0x05,   0x01,
-  0x09,   0x30,
-  0x09,   0x31,
-  0x09,   0x38,
-  
-  0x15,   0x81,
-  0x25,   0x7F,
-  0x75,   0x08,
-  0x95,   0x03,
-  
-  0x81,   0x06,
-  0xC0,   0x09,
-  0x3c,   0x05,
-  0xff,   0x09,
-  
-  0x01,   0x15,
-  0x00,   0x25,
-  0x01,   0x75,
-  0x01,   0x95,
-  
-  0x02,   0xb1,
-  0x22,   0x75,
-  0x06,   0x95,
-  0x01,   0xb1,
-  
-  0x01,   0xc0
-}; 
+__ALIGN_BEGIN uint8_t USB_Rx_Buffer[HID_OUT_PACKET] __ALIGN_END;
 
 /**
   * @}
@@ -288,6 +244,12 @@ static uint8_t  USBD_HID_Init (void  *pdev,
               HID_OUT_PACKET,
               USB_OTG_EP_INT);
   
+  /* Prepare Out endpoint to receive next packet */
+  DCD_EP_PrepareRx(pdev,
+                   HID_OUT_EP,
+                   (uint8_t*)(USB_Rx_Buffer),
+                   HID_OUT_PACKET);
+
   return USBD_OK;
 }
 
@@ -361,8 +323,8 @@ static uint8_t  USBD_HID_Setup (void  *pdev,
     case USB_REQ_GET_DESCRIPTOR: 
       if( req->wValue >> 8 == HID_REPORT_DESC)
       {
-        len = MIN(HID_MOUSE_REPORT_DESC_SIZE , req->wLength);
-        pbuf = HID_MOUSE_ReportDesc;
+        len = MIN(sizeof(HID_RAW_ReportDesc) , req->wLength);
+        pbuf = HID_RAW_ReportDesc;
       }
       else if( req->wValue >> 8 == HID_DESCRIPTOR_TYPE)
       {
@@ -440,6 +402,31 @@ static uint8_t  USBD_HID_DataIn (void  *pdev,
   /* Ensure that the FIFO is empty before a new transfer, this condition could 
   be caused by  a new transfer before the end of the previous transfer */
   DCD_EP_Flush(pdev, HID_IN_EP);
+  return USBD_OK;
+}
+
+static uint8_t  USBD_HID_DataOut( void *pdev, uint8_t epnum )
+{
+  uint16_t USB_Rx_Cnt;
+  
+  if ( epnum != (HID_OUT_EP & 0x0F) )
+    return USBD_FAIL;
+
+  /* Get the received data buffer and update the counter */
+  USB_Rx_Cnt = ((USB_OTG_CORE_HANDLE*)pdev)->dev.out_ep[epnum].xfer_count;
+  
+  //
+  // process output report on USB_Rx_Buffer, here
+  //
+  //TODO: add a callback but for now we just echo
+  USBD_HID_SendReport(pdev, USB_Rx_Buffer, HID_IN_PACKET);
+  
+  /* Prepare Out endpoint to receive next packet */
+  DCD_EP_PrepareRx(pdev,
+                   HID_OUT_EP,
+                   (uint8_t*)(USB_Rx_Buffer),
+                   HID_OUT_PACKET);
+
   return USBD_OK;
 }
 
