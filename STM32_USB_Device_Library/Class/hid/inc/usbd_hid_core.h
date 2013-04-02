@@ -63,6 +63,7 @@
   * @{
   */
 
+typedef void (*USBD_HID_ReceiveReportCB)(USB_OTG_CORE_HANDLE* pdev, uint8_t epnum, uint8_t* report, uint16_t len);
 
 /**
   * @}
@@ -93,6 +94,8 @@ extern USBD_Class_cb_TypeDef  USBD_HID_cb;
 uint8_t USBD_HID_SendReport (USB_OTG_CORE_HANDLE  *pdev, 
                                  uint8_t *report,
                                  uint16_t len);
+
+uint8_t USBD_HID_SetRecieveReportCB( USB_OTG_CORE_HANDLE  *pdev, USBD_HID_ReceiveReportCB f);
 /**
   * @}
   */ 

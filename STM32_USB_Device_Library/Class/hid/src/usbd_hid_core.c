@@ -212,6 +212,8 @@ __ALIGN_BEGIN static uint8_t USBD_HID_CfgDesc[USB_HID_CONFIG_DESC_SIZ] __ALIGN_E
 } ;
 
 __ALIGN_BEGIN uint8_t USB_Rx_Buffer[HID_OUT_PACKET] __ALIGN_END;
+    
+USBD_HID_ReceiveReportCB _ReceiveReportCB = NULL;
 
 /**
   * @}
@@ -376,6 +378,19 @@ uint8_t USBD_HID_SendReport     (USB_OTG_CORE_HANDLE  *pdev,
 }
 
 /**
+  * @brief  USBD_HID_SetRecieveReportCB 
+  *         Set the callback to handle data out from the host
+  * @param  pdev: device instance
+  * @param  f: pointer to callback function
+  * @retval status
+  */
+uint8_t USBD_HID_SetRecieveReportCB( USB_OTG_CORE_HANDLE  *pdev, USBD_HID_ReceiveReportCB f)
+{
+    _ReceiveReportCB = f;
+    return USBD_OK;
+}
+
+/**
   * @brief  USBD_HID_GetCfgDesc 
   *         return configuration descriptor
   * @param  speed : current device speed
@@ -418,8 +433,8 @@ static uint8_t  USBD_HID_DataOut( void *pdev, uint8_t epnum )
   //
   // process output report on USB_Rx_Buffer, here
   //
-  //TODO: add a callback but for now we just echo
-  USBD_HID_SendReport(pdev, USB_Rx_Buffer, HID_IN_PACKET);
+  if (_ReceiveReportCB != NULL)
+      _ReceiveReportCB(pdev, epnum, USB_Rx_Buffer, HID_OUT_PACKET);
   
   /* Prepare Out endpoint to receive next packet */
   DCD_EP_PrepareRx(pdev,

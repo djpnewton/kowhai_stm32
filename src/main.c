@@ -36,6 +36,11 @@ void Delay(__IO uint32_t nCount)
     { }
 }
 
+static uint8_t HID_OutData(void* pdev, uint8_t epnum, uint8_t* buf, uint16_t len)
+{
+    USBD_HID_SendReport(pdev, buf, len);
+}
+
 void USB_init(void)
 {
     USBD_Init(&USB_OTG_dev,
@@ -43,6 +48,7 @@ void USB_init(void)
             &USR_desc,
             &USBD_HID_cb,
             &USR_cb);
+    USBD_HID_SetRecieveReportCB(&USB_OTG_dev, HID_OutData);
 }
 
 void GPIO_init(void)
