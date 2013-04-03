@@ -36,21 +36,6 @@ void Delay(__IO uint32_t nCount)
     { }
 }
 
-static uint8_t HID_OutData(void* pdev, uint8_t epnum, uint8_t* buf, uint16_t len)
-{
-    USBD_HID_SendReport(pdev, buf, len);
-}
-
-void USB_init(void)
-{
-    USBD_Init(&USB_OTG_dev,
-            USB_OTG_FS_CORE_ID,
-            &USR_desc,
-            &USBD_HID_cb,
-            &USR_cb);
-    USBD_HID_SetRecieveReportCB(&USB_OTG_dev, HID_OutData);
-}
-
 void GPIO_init(void)
 {
     GPIO_InitTypeDef GPIO_InitStructure;       
@@ -66,6 +51,35 @@ void GPIO_init(void)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
     GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
     GPIO_Init(GPIOD, &GPIO_InitStructure);
+}
+
+static uint8_t HID_OutData(void* pdev, uint8_t epnum, uint8_t* buf, uint16_t len)
+{
+    /* Echo buffer back */
+    USBD_HID_SendReport(pdev, buf, len);
+
+    GPIO_init();
+    /* Reset LEDs */
+    GPIO_ResetBits(GPIOD, GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15);
+    /* Set pins to be toggled */
+    if (*buf == 'a')
+        GPIO_SetBits(GPIOD, GPIO_Pin_12);
+    if (*buf == 'b')
+        GPIO_SetBits(GPIOD, GPIO_Pin_13);
+    if (*buf == 'c')
+        GPIO_SetBits(GPIOD, GPIO_Pin_14);
+    if (*buf == 'd')
+        GPIO_SetBits(GPIOD, GPIO_Pin_15);
+}
+
+void USB_init(void)
+{
+    USBD_Init(&USB_OTG_dev,
+            USB_OTG_FS_CORE_ID,
+            &USR_desc,
+            &USBD_HID_cb,
+            &USR_cb);
+    USBD_HID_SetRecieveReportCB(&USB_OTG_dev, HID_OutData);
 }
 
 void usb_app(void)
