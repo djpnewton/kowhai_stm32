@@ -188,7 +188,7 @@ void OTG_FS_WKUP_IRQHandler(void)
   */
 void OTG_FS_IRQHandler(void)
 {
-  USBD_OTG_ISR_Handler (&USB_OTG_dev);
+  USBD_OTG_ISR_Handler(&USB_OTG_dev);
 }
 
 /******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/

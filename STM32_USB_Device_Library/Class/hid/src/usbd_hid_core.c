@@ -136,8 +136,8 @@ __ALIGN_BEGIN static uint32_t  USBD_HID_IdleState __ALIGN_END = 0;
 
 __ALIGN_BEGIN static uint8_t HID_RAW_ReportDesc[] __ALIGN_END =
 {
-    0x06, 0x00, 0xFF,       // usage page
-    0x0A, 0x00, 0x01,       // usage
+    0x06, 0xFF, 0x00,       // usage page
+    0x0A, 0x01, 0x00,       // usage
     0xA1, 0x01,             // Collection 0x01
     0x75, 0x08,             // report size = 8 bits
     0x15, 0x00,             // logical minimum = 0

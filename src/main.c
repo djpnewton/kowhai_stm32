@@ -9,6 +9,7 @@
 #include "usbd_hid_core.h"
 #include "usbd_usr.h"
 #include "usbd_desc.h"
+#include "prot.h"
 
 //
 // global variables
@@ -53,10 +54,10 @@ void GPIO_init(void)
     GPIO_Init(GPIOD, &GPIO_InitStructure);
 }
 
-static uint8_t HID_OutData(void* pdev, uint8_t epnum, uint8_t* buf, uint16_t len)
+static void HID_OutData(USB_OTG_CORE_HANDLE* pdev, uint8_t epnum, uint8_t* buf, uint16_t len)
 {
     /* Echo buffer back */
-    USBD_HID_SendReport(pdev, buf, len);
+    //USBD_HID_SendReport(pdev, buf, len);
 
     GPIO_init();
     /* Reset LEDs */
@@ -70,6 +71,38 @@ static uint8_t HID_OutData(void* pdev, uint8_t epnum, uint8_t* buf, uint16_t len
         GPIO_SetBits(GPIOD, GPIO_Pin_14);
     if (*buf == 'd')
         GPIO_SetBits(GPIOD, GPIO_Pin_15);
+
+    prot_process_packet(buf, len);
+}
+
+static void HID_SendReport(void* buffer, size_t buffer_size)
+{
+    USBD_HID_SendReport(&USB_OTG_dev, buffer, buffer_size);
+
+{
+    static int pin = 0;
+    GPIO_init();
+    /* Reset LEDs */
+    GPIO_ResetBits(GPIOD, GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15);
+    /* Set pins to be toggled */
+    switch (pin % 4)
+    {
+        case 0:
+            GPIO_SetBits(GPIOD, GPIO_Pin_12);
+            break;
+        case 1:
+            GPIO_SetBits(GPIOD, GPIO_Pin_13);
+            break;
+        case 2:
+            GPIO_SetBits(GPIOD, GPIO_Pin_14);
+            break;
+        case 3:
+            GPIO_SetBits(GPIOD, GPIO_Pin_15);
+            break;
+    }
+    pin++;
+}
+    Delay(0x3FFFFF);
 }
 
 void USB_init(void)
@@ -86,6 +119,8 @@ void usb_app(void)
 {
     // init USB
     USB_init();
+    // init prot
+    prot_init(HID_SendReport);
     // mainloop (do nothing)
     while (1);
     // disconnect the USB device
