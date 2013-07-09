@@ -119,8 +119,9 @@ OPT = -O0
 #OPT = -O2 -falign-functions=16 -fno-inline -fomit-frame-pointer
 
 #
-# Define openocd flash commands here
+# Define openocd commands here
 #
+OPENOCD?=openocd
 OPENOCD_FLASH_CMDS=-c init -c halt -c 'sleep 10' -c 'flash write_image erase unlock $(FULL_PRJ).elf' -c shutdown
 
 #
@@ -159,10 +160,10 @@ CPFLAGS += -MD -MP -MF .dep/$(@F).d
 all: $(OBJS) $(FULL_PRJ).elf $(FULL_PRJ).hex
 
 flash:
-	openocd -f openocd.cfg $(OPENOCD_FLASH_CMDS)
+	$(OPENOCD) -f openocd.cfg $(OPENOCD_FLASH_CMDS)
 
 debug:
-	openocd -f openocd.cfg
+	$(OPENOCD) -f openocd.cfg
 
 %.o : %.c
 	$(CC) -c $(CPFLAGS) -I . $(INCDIR) $< -o $@
