@@ -77,32 +77,9 @@ static void HID_OutData(USB_OTG_CORE_HANDLE* pdev, uint8_t epnum, uint8_t* buf, 
 
 static void HID_SendReport(void* buffer, size_t buffer_size)
 {
-    USBD_HID_SendReport(&USB_OTG_dev, buffer, buffer_size);
-
-{
-    static int pin = 0;
-    GPIO_init();
-    /* Reset LEDs */
-    GPIO_ResetBits(GPIOD, GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15);
-    /* Set pins to be toggled */
-    switch (pin % 4)
-    {
-        case 0:
-            GPIO_SetBits(GPIOD, GPIO_Pin_12);
-            break;
-        case 1:
-            GPIO_SetBits(GPIOD, GPIO_Pin_13);
-            break;
-        case 2:
-            GPIO_SetBits(GPIOD, GPIO_Pin_14);
-            break;
-        case 3:
-            GPIO_SetBits(GPIOD, GPIO_Pin_15);
-            break;
-    }
-    pin++;
-}
-    Delay(0x3FFFFF);
+    char hid_out_packet[HID_OUT_PACKET];
+    memcpy(hid_out_packet, buffer, MIN(buffer_size, HID_OUT_PACKET));
+    USBD_HID_SendReport(&USB_OTG_dev, hid_out_packet, HID_OUT_PACKET);
 }
 
 void USB_init(void)
