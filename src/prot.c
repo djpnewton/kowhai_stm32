@@ -63,14 +63,15 @@ static struct settings_data_t settings;
 // server structures
 //
 
-uint16_t tree_list[] = {SYM_SETTINGS};
-struct kowhai_node_t* tree_descriptors[] = {settings_descriptor};
-void* tree_data_buffers[] = {&settings};
-uint16_t function_list[] = {};
-struct kowhai_protocol_function_details_t function_list_details[] = {};
+struct kowhai_protocol_server_tree_item_t tree_list[] = {
+    { KOW_TREE_ID(SYM_SETTINGS),                settings_descriptor,            sizeof(settings_descriptor),            &settings },
+};
+struct kowhai_protocol_id_list_item_t tree_id_list[COUNT_OF(tree_list)];
+struct kowhai_protocol_server_function_item_t function_list[] = {
+};
+struct kowhai_protocol_id_list_item_t function_id_list[COUNT_OF(function_list)];
 
 char packet_buffer[MAX_PACKET_SIZE];
-size_t tree_descriptor_sizes[COUNT_OF(tree_descriptors)];
 struct kowhai_protocol_server_t server;
 prot_send_buffer_t send_buffer_cb;
 
@@ -100,7 +101,6 @@ int function_called(pkowhai_protocol_server_t server, void* param, uint16_t func
 void prot_init(prot_send_buffer_t send_buffer)
 {
     send_buffer_cb = send_buffer;
-    kowhai_server_init_tree_descriptor_sizes(tree_descriptors, tree_descriptor_sizes, COUNT_OF(tree_descriptors));
     kowhai_server_init(&server,
         MAX_PACKET_SIZE,
         packet_buffer,
@@ -111,12 +111,10 @@ void prot_init(prot_send_buffer_t send_buffer)
         NULL,
         COUNT_OF(tree_list),
         tree_list,
-        tree_descriptors,
-        tree_descriptor_sizes,
-        tree_data_buffers,
+        tree_id_list,
         COUNT_OF(function_list),
         function_list,
-        function_list_details,
+        function_id_list,
         function_called,
         NULL,
         COUNT_OF(symbols),

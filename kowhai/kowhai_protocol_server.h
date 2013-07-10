@@ -13,8 +13,9 @@ typedef struct kowhai_protocol_server_t* pkowhai_protocol_server_t;
  * @param param application specific parameter passed through
  * @param packet the packet buffer to write out
  * @param packet_size bytes in the packet buffer
+ * @param protocol pointer to the protocol object that generated the packet
  */
-typedef void (*kowhai_send_packet_t)(pkowhai_protocol_server_t server, void* param, void* packet, size_t packet_size);
+typedef void (*kowhai_send_packet_t)(pkowhai_protocol_server_t server, void* param, void* packet, size_t packet_size, struct kowhai_protocol_t* protocol);
 
 /**
  * @brief called before node has been written via the kowhai protocol
@@ -46,6 +47,20 @@ typedef void (*kowhai_node_post_write_t)(pkowhai_protocol_server_t server, void*
  */
 typedef int (*kowhai_function_called_t)(pkowhai_protocol_server_t server, void* param, uint16_t function_id);
 
+struct kowhai_protocol_server_tree_item_t
+{
+    struct kowhai_protocol_id_list_item_t list_id;
+    struct kowhai_node_t* descriptor;
+    size_t descriptor_size;
+    void* data;
+};
+
+struct kowhai_protocol_server_function_item_t
+{
+    struct kowhai_protocol_id_list_item_t list_id;
+    struct kowhai_protocol_function_details_t details;
+};
+
 struct kowhai_protocol_server_t
 {
     size_t max_packet_size;
@@ -56,13 +71,11 @@ struct kowhai_protocol_server_t
     kowhai_send_packet_t send_packet;
     void* send_packet_param;
     int tree_list_count;
-    uint16_t* tree_list;
-    struct kowhai_node_t** tree_descriptors;
-    size_t* tree_descriptor_sizes;
-    void** tree_data_buffers;
+    struct kowhai_protocol_server_tree_item_t* tree_list;
+    struct kowhai_protocol_id_list_item_t* tree_id_list;
     int function_list_count;
-    uint16_t* function_list;
-    struct kowhai_protocol_function_details_t* function_list_details;
+    struct kowhai_protocol_server_function_item_t* function_list;
+    struct kowhai_protocol_id_list_item_t* function_id_list;
     kowhai_function_called_t function_called;
     void* function_called_param;
     int symbol_list_count;
@@ -73,8 +86,6 @@ struct kowhai_protocol_server_t
     int current_write_node_bytes_written;
 };
 
-void kowhai_server_init_tree_descriptor_sizes(struct kowhai_node_t** descriptors, size_t* sizes, int num);
-
 void kowhai_server_init(struct kowhai_protocol_server_t* server,
     size_t max_packet_size,
     void* packet_buffer,
@@ -84,13 +95,11 @@ void kowhai_server_init(struct kowhai_protocol_server_t* server,
     kowhai_send_packet_t send_packet,
     void* send_packet_param,
     int tree_list_count,
-    uint16_t* tree_list,
-    struct kowhai_node_t** tree_descriptors,
-    size_t* tree_descriptor_sizes,
-    void** tree_data_buffers,
+    struct kowhai_protocol_server_tree_item_t* tree_list,
+    struct kowhai_protocol_id_list_item_t* tree_id_list,
     int function_list_count,
-    uint16_t* function_list,
-    struct kowhai_protocol_function_details_t* function_list_details,
+    struct kowhai_protocol_server_function_item_t* function_list,
+    struct kowhai_protocol_id_list_item_t* function_id_list,
     kowhai_function_called_t function_called,
     void* function_called_param,
     int symbol_list_count,
