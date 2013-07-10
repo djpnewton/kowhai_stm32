@@ -4,6 +4,7 @@
 
 #include "prot.h"
 #include "../kowhai/kowhai_protocol_server.h"
+#include "stm32f4_discovery.h"
 
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 #define MAX_PACKET_SIZE 64
@@ -85,6 +86,18 @@ void node_pre_write(pkowhai_protocol_server_t server, void* param, uint16_t tree
 
 void node_post_write(pkowhai_protocol_server_t server, void* param, uint16_t tree_id, struct kowhai_node_t* node, int offset, int bytes_written)
 {
+    GPIO_init();
+    /* Reset LEDs */
+    GPIO_ResetBits(GPIOD, GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15);
+    /* Set pins to be toggled */
+    if (settings.gpio_d.P12)
+        GPIO_SetBits(GPIOD, GPIO_Pin_12);
+    if (settings.gpio_d.P13)
+        GPIO_SetBits(GPIOD, GPIO_Pin_13);
+    if (settings.gpio_d.P14)
+        GPIO_SetBits(GPIOD, GPIO_Pin_14);
+    if (settings.gpio_d.P15)
+        GPIO_SetBits(GPIOD, GPIO_Pin_15);
 }
 
 void server_buffer_send(pkowhai_protocol_server_t server, void* param, void* buffer, size_t buffer_size)

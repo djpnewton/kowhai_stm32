@@ -61,22 +61,6 @@ void GPIO_init(void)
 
 static void HID_OutData(USB_OTG_CORE_HANDLE* pdev, uint8_t epnum, uint8_t* buf, uint16_t len)
 {
-    /* Echo buffer back */
-    //USBD_HID_SendReport(pdev, buf, len);
-
-    GPIO_init();
-    /* Reset LEDs */
-    GPIO_ResetBits(GPIOD, GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15);
-    /* Set pins to be toggled */
-    if (*buf == 'a')
-        GPIO_SetBits(GPIOD, GPIO_Pin_12);
-    if (*buf == 'b')
-        GPIO_SetBits(GPIOD, GPIO_Pin_13);
-    if (*buf == 'c')
-        GPIO_SetBits(GPIOD, GPIO_Pin_14);
-    if (*buf == 'd')
-        GPIO_SetBits(GPIOD, GPIO_Pin_15);
-
     prot_process_packet(buf, len);
 }
 
