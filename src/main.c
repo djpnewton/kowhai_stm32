@@ -17,6 +17,11 @@
 
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE  USB_OTG_dev __ALIGN_END;
 
+#define HID_OUT_FIFO_COUNT 10
+char HID_out_fifo[HID_OUT_FIFO_COUNT][HID_OUT_PACKET];
+int HID_out_write_index = 0;
+int HID_out_read_index = 0;
+
 //
 // functions
 //
@@ -77,9 +82,13 @@ static void HID_OutData(USB_OTG_CORE_HANDLE* pdev, uint8_t epnum, uint8_t* buf, 
 
 static void HID_SendReport(void* buffer, size_t buffer_size)
 {
-    char hid_out_packet[HID_OUT_PACKET];
-    memcpy(hid_out_packet, buffer, MIN(buffer_size, HID_OUT_PACKET));
-    USBD_HID_SendReport(&USB_OTG_dev, hid_out_packet, HID_OUT_PACKET);
+    //TODO: THIS SHOULD BE IN A CRITICAL SECTION!!!
+    // copy report to HID_out_fifo
+    if (HID_out_write_index < HID_OUT_FIFO_COUNT-1)
+        HID_out_write_index++;
+    else
+        HID_out_write_index = 0;
+    memcpy(HID_out_fifo[HID_out_write_index], buffer, MIN(buffer_size, HID_OUT_PACKET));
 }
 
 void USB_init(void)
@@ -92,8 +101,34 @@ void USB_init(void)
     USBD_HID_SetRecieveReportCB(&USB_OTG_dev, HID_OutData);
 }
 
+void SysTick_Handler(void)
+{
+    // Send report from HID_out_fifo
+    if (HID_out_read_index != HID_out_write_index)
+    {
+        if (HID_out_read_index < HID_out_write_index)
+            HID_out_read_index++;
+        else
+        {
+            if (HID_out_read_index < HID_OUT_FIFO_COUNT-1)
+                HID_out_read_index++;
+            else
+                HID_out_read_index = 0;
+        }
+        USBD_HID_SendReport(&USB_OTG_dev, HID_out_fifo[HID_out_read_index], HID_OUT_PACKET);
+    }
+}
+
 void usb_app(void)
 {
+    /* 
+     * Setup SysTick Timer for 1 msec interrupts.
+     */
+    if (SysTick_Config(SystemCoreClock / 1000))
+    {
+        while (1);                  /* Capture error */
+    }
+    
     // init USB
     USB_init();
     // init prot
