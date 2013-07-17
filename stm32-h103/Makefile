@@ -18,7 +18,7 @@
 ## along with this library.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-BINARY = usbhid
+BINARY = kowhaihid
 
 PREFIX	?= arm-none-eabi
 #PREFIX		?= arm-elf
@@ -39,7 +39,7 @@ $(info We seem to be building the example in the source directory. Using local l
 endif
 endif
 
-SRC		= usbhid.c ../protocol/prot.c ../kowhai/kowhai.c ../kowhai/kowhai_protocol.c ../kowhai/kowhai_protocol_server.c
+SRC		= main.c ../protocol/prot.c ../protocol/usb.c ../kowhai/kowhai.c ../kowhai/kowhai_protocol.c ../kowhai/kowhai_protocol_server.c
 
 INCDIR		= ../protocol ../kowhai
 
@@ -117,7 +117,7 @@ flash: $(BINARY).flash
 
 %.o: %.c Makefile
 	@#printf "  CC      $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(CC) $(CFLAGS) -I . $(INCDIR) -o $@ -c $<
+	$(Q)$(CC) $(CFLAGS) -I $(INCDIR) -o $@ -c $<
 
 clean:
 	$(Q)rm -f $(OBJS)

@@ -1,29 +1,8 @@
-/*
- * This file is part of the libopencm3 project.
- *
- * Copyright (C) 2010 Gareth McMullin <gareth@blacksphere.co.nz>
- * Copyright (C) 2013 Daniel Newton <djpnewton@gmail.com>
- *
- * This library is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this library.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 #include <stdlib.h>
-#include <libopencm3/stm32/f1/rcc.h>
-#include <libopencm3/stm32/f1/gpio.h>
-#include <libopencm3/cm3/systick.h>
 #include <libopencm3/usb/usbd.h>
 #include <libopencm3/usb/hid.h>
+#include <libopencm3/cm3/systick.h>
+#include "prot.h"
 
 #define HID_OUT_PACKET 64
 #define HID_IN_PACKET 64
@@ -45,7 +24,6 @@ const struct usb_device_descriptor dev = {
 	.bNumConfigurations = 1,
 };
 
-/* I have no idea what this means. I haven't read the HID spec. */
 static const uint8_t hid_report_descriptor[] = {
 	0x06, 0x00, 0xFF,       // usage page
 	0x0A, 0x00, 0x01,       // usage
@@ -178,7 +156,7 @@ static void hid_set_config(usbd_device *usbd_dev, uint16_t wValue)
 				hid_control_request);
 
 	systick_set_clocksource(STK_CTRL_CLKSOURCE_AHB_DIV8);
-	/* SysTick interrupt every N clock pulses: set reload to N-1 */
+	// SysTick interrupt every N clock pulses: set reload to N-1
 	systick_set_reload(99999);
 	systick_interrupt_enable();
 	systick_counter_enable();
@@ -194,28 +172,11 @@ static void prot_send_buffer(void* buffer, size_t buffer_size)
 		size = buffer_size;
 	memcpy(buf, buffer, size);
 	while (usbd_ep_write_packet(usbd_dev, 0x81, buf, HID_IN_PACKET) == 0);
-
-/*
-		gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ,
-			GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
-		gpio_toggle(GPIOC, GPIO12);	// LED on/off
-*/
 }
 
-int main(void)
+void usb_init(void)
 {
 	int i;
-
-	//
-	// Init USB
-	//
-	rcc_clock_setup_in_hsi_out_48mhz();
-
-	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPCEN);
-
-	gpio_set(GPIOC, GPIO11);
-	gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ,
-		      GPIO_CNF_OUTPUT_PUSHPULL, GPIO11);
 
 	usbd_dev = usbd_init(&stm32f103_usb_driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, hid_set_config);
@@ -223,16 +184,11 @@ int main(void)
 	for (i = 0; i < 0x80000; i++)
 		__asm__("nop");
 
-	gpio_clear(GPIOC, GPIO11);
-
-	//
-	// Init kowhai
-	//
 	prot_init(prot_send_buffer);
+}
 
-	//
-	// Service USB
-	//
+void usb_poll_forever(void)
+{
 	while (1)
 		usbd_poll(usbd_dev);
 }
