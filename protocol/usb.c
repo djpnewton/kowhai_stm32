@@ -178,7 +178,13 @@ void usb_init(void)
 {
 	int i;
 
+#ifdef STM32F1
 	usbd_dev = usbd_init(&stm32f103_usb_driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+#elif STM32F4
+	usbd_dev = usbd_init(&otgfs_usb_driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+#else
+ERROR
+#endif
 	usbd_register_set_config_callback(usbd_dev, hid_set_config);
 
 	for (i = 0; i < 0x80000; i++)

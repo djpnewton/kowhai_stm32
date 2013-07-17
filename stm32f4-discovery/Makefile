@@ -19,6 +19,8 @@
 ## along with this library.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
+BINARY = kowhaihid
+
 PREFIX	?= arm-none-eabi
 # PREFIX		?= arm-elf
 CC		= $(PREFIX)-gcc
@@ -28,8 +30,8 @@ OBJDUMP		= $(PREFIX)-objdump
 GDB		= $(PREFIX)-gdb
 FLASH		= $(shell which st-flash)
 
-TOOLCHAIN_DIR ?= ../../../../../libopencm3
-ifeq ($(wildcard ../../../../../libopencm3/lib/libopencm3_stm32f4.a),)
+TOOLCHAIN_DIR ?= ../libopencm3
+ifeq ($(wildcard ../libopencm3/lib/libopencm3_stm32f4.a),)
 ifneq ($(strip $(shell which $(CC))),)
 TOOLCHAIN_DIR := $(shell dirname `which $(CC)`)/../$(PREFIX)
 endif
@@ -39,23 +41,27 @@ $(info We seem to be building the example in the source directory. Using local l
 endif
 endif
 
+SRC		= main.c ../protocol/prot.c ../protocol/usb.c ../kowhai/kowhai.c ../kowhai/kowhai_protocol.c ../kowhai/kowhai_protocol_server.c
+
+INCDIR		= ../protocol ../kowhai
+
+OBJS		= $(SRC:.c=.o)
 CFLAGS		+= -Os -g \
 		   -Wall -Wextra -Wimplicit-function-declaration \
-		   -Wredundant-decls -Wmissing-prototypes -Wstrict-prototypes \
-		   -Wundef -Wshadow \
+		   -Wredundant-decls -Wno-missing-prototypes -Wstrict-prototypes \
+		   -Wundef -Wshadow -Wno-unused-parameter \
 		   -I$(TOOLCHAIN_DIR)/include \
 		   -fno-common -mcpu=cortex-m4 -mthumb \
 		   -mfloat-abi=hard -mfpu=fpv4-sp-d16 -MD -DSTM32F4
-LDSCRIPT	?= $(BINARY).ld
+LDSCRIPT	= stm32f4-discovery.ld
 LDFLAGS		+= --static -lc -lnosys -L$(TOOLCHAIN_DIR)/lib \
 			 -L$(TOOLCHAIN_DIR)/lib/stm32/f4 \
 		   -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections \
 		   -mthumb -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
-OBJS		+= $(BINARY).o
 
 OOCD		?= openocd
 OOCD_INTERFACE	?= flossjtag
-OOCD_BOARD	?= olimex_stm32_h103
+OOCD_BOARD	?= stm32f4discovery
 # Black magic probe specific variables
 # Set the BMP_PORT to a serial port and then BMP is used for flashing
 BMP_PORT        ?=
@@ -102,10 +108,10 @@ flash: $(BINARY).flash
 
 %.o: %.c Makefile
 	@#printf "  CC      $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(CC) $(CFLAGS) -o $@ -c $<
+	$(Q)$(CC) $(CFLAGS) -I $(INCDIR) -o $@ -c $<
 
 clean:
-	$(Q)rm -f *.o
+	$(Q)rm -f $(OBJS)
 	$(Q)rm -f *.d
 	$(Q)rm -f *.elf
 	$(Q)rm -f *.bin

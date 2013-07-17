@@ -5,7 +5,13 @@
 #include "prot.h"
 #include "../kowhai/kowhai_protocol_server.h"
 
+#ifdef STM32F1
 #include <libopencm3/stm32/f1/gpio.h>
+#elif STM32F4
+#include <libopencm3/stm32/f4/gpio.h>
+#else
+ERROR
+#endif
 
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 #define MAX_PACKET_SIZE 64
@@ -107,10 +113,19 @@ void node_pre_write(pkowhai_protocol_server_t server, void* param, uint16_t tree
 
 void node_post_write(pkowhai_protocol_server_t server, void* param, uint16_t tree_id, struct kowhai_node_t* node, int offset, int bytes_written)
 {
+#ifdef STM32F1
     gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO_ALL);
     gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO_ALL);
     gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO_ALL);
     gpio_set_mode(GPIOD, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO_ALL);
+#elif STM32F4
+    gpio_mode_setup(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO_ALL);
+    gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO_ALL);
+    gpio_mode_setup(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO_ALL);
+    gpio_mode_setup(GPIOD, GPIO_MODE_OUTPUT, GPIO_PUPD_PULLUP, GPIO_ALL);
+#else
+ERROR
+#endif
     GPIO_SET_BANK(GPIOA, settings.gpio_a);
     GPIO_SET_BANK(GPIOB, settings.gpio_b);
     GPIO_SET_BANK(GPIOC, settings.gpio_c);

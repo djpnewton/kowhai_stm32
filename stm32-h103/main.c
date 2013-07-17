@@ -16,7 +16,7 @@ int main(void)
 		GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
 	gpio_clear(GPIOC, GPIO12);
 
-	// need to set this pin for usb to work??
+	// usb pull up before usb init (so OS sees new device i think)
 	gpio_set(GPIOC, GPIO11);
 	gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ,
 		GPIO_CNF_OUTPUT_PUSHPULL, GPIO11);
