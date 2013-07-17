@@ -121,7 +121,7 @@ flash: $(BINARY).flash
 
 clean:
 	$(Q)rm -f $(OBJS)
-	$(Q)rm -f *.d
+	$(Q)rm -f $(SRC:.c=.d)
 	$(Q)rm -f *.elf
 	$(Q)rm -f *.bin
 	$(Q)rm -f *.hex
