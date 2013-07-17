@@ -5,6 +5,8 @@
 #include "prot.h"
 #include "../kowhai/kowhai_protocol_server.h"
 
+#include <libopencm3/stm32/f1/gpio.h>
+
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 #define MAX_PACKET_SIZE 64
 
@@ -22,12 +24,10 @@ struct kowhai_node_t settings_descriptor[] =
 {
     { KOW_BRANCH_START,     SYM_SETTINGS,       1,                0 },
 
-    { KOW_BRANCH_START,     SYM_GPIOD,          1,                0 },
-    { KOW_UINT8,            SYM_P12,            1,                0 },
-    { KOW_UINT8,            SYM_P13,            1,                0 },
-    { KOW_UINT8,            SYM_P14,            1,                0 },
-    { KOW_UINT8,            SYM_P15,            1,                0 },
-    { KOW_BRANCH_END,       SYM_GPIOD,          0,                0 },
+    { KOW_UINT8,            SYM_GPIOA,          16,               0 },
+    { KOW_UINT8,            SYM_GPIOB,          16,               0 },
+    { KOW_UINT8,            SYM_GPIOC,          16,               0 },
+    { KOW_UINT8,            SYM_GPIOD,          16,               0 },
 
     { KOW_BRANCH_END,       SYM_SETTINGS,       0,                0 },
 };
@@ -38,17 +38,12 @@ struct kowhai_node_t settings_descriptor[] =
 
 #pragma pack(1)
 
-struct gpio_t
-{
-    uint8_t P12;
-    uint8_t P13;
-    uint8_t P14;
-    uint8_t P15;
-};
-
 struct settings_data_t
 {
-    struct gpio_t gpio_d;
+    uint8_t gpio_a[16];
+    uint8_t gpio_b[16];
+    uint8_t gpio_c[16];
+    uint8_t gpio_d[16];
 };
 
 #pragma pack()
@@ -82,8 +77,44 @@ void node_pre_write(pkowhai_protocol_server_t server, void* param, uint16_t tree
 {
 }
 
+#define GPIO_SET(bank, pin, value) \
+{ \
+    if (value) \
+        gpio_set(bank, pin); \
+    else \
+        gpio_clear(bank, pin); \
+}
+
+#define GPIO_SET_BANK(bank, values) \
+{ \
+    GPIO_SET(bank, GPIO0, values[0]); \
+    GPIO_SET(bank, GPIO1, values[1]); \
+    GPIO_SET(bank, GPIO2, values[2]); \
+    GPIO_SET(bank, GPIO3, values[3]); \
+    GPIO_SET(bank, GPIO4, values[4]); \
+    GPIO_SET(bank, GPIO5, values[5]); \
+    GPIO_SET(bank, GPIO6, values[6]); \
+    GPIO_SET(bank, GPIO7, values[7]); \
+    GPIO_SET(bank, GPIO8, values[8]); \
+    GPIO_SET(bank, GPIO9, values[9]); \
+    GPIO_SET(bank, GPIO10, values[10]); \
+    GPIO_SET(bank, GPIO11, values[11]); \
+    GPIO_SET(bank, GPIO12, values[12]); \
+    GPIO_SET(bank, GPIO13, values[13]); \
+    GPIO_SET(bank, GPIO14, values[14]); \
+    GPIO_SET(bank, GPIO15, values[15]); \
+}
+
 void node_post_write(pkowhai_protocol_server_t server, void* param, uint16_t tree_id, struct kowhai_node_t* node, int offset, int bytes_written)
 {
+    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO_ALL);
+    gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO_ALL);
+    gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO_ALL);
+    gpio_set_mode(GPIOD, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO_ALL);
+    GPIO_SET_BANK(GPIOA, settings.gpio_a);
+    GPIO_SET_BANK(GPIOB, settings.gpio_b);
+    GPIO_SET_BANK(GPIOC, settings.gpio_c);
+    GPIO_SET_BANK(GPIOD, settings.gpio_d);
 }
 
 void server_buffer_send(pkowhai_protocol_server_t server, void* param, void* buffer, size_t buffer_size)

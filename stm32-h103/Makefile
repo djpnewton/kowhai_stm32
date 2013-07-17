@@ -18,6 +18,8 @@
 ## along with this library.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
+BINARY = usbhid
+
 PREFIX	?= arm-none-eabi
 #PREFIX		?= arm-elf
 CC		= $(PREFIX)-gcc
@@ -26,8 +28,8 @@ OBJCOPY		= $(PREFIX)-objcopy
 OBJDUMP		= $(PREFIX)-objdump
 GDB		= $(PREFIX)-gdb
 
-TOOLCHAIN_DIR ?= ../../../../../libopencm3
-ifeq ($(wildcard ../../../../../libopencm3/lib/libopencm3_stm32f1.a),)
+TOOLCHAIN_DIR ?= ../libopencm3
+ifeq ($(wildcard ../libopencm3/lib/libopencm3_stm32f1.a),)
 ifneq ($(strip $(shell which $(CC))),)
 TOOLCHAIN_DIR := $(shell dirname `which $(CC)`)/../$(PREFIX)
 endif
@@ -37,14 +39,19 @@ $(info We seem to be building the example in the source directory. Using local l
 endif
 endif
 
+SRC		= usbhid.c ../protocol/prot.c ../kowhai/kowhai.c ../kowhai/kowhai_protocol.c ../kowhai/kowhai_protocol_server.c
+
+INCDIR		= ../protocol ../kowhai
+
+OBJS		= $(SRC:.c=.o)
 ARCH_FLAGS      = -mthumb -mcpu=cortex-m3 -msoft-float
 CFLAGS		+= -Os -g \
 		   -Wall -Wextra -Wimplicit-function-declaration \
-		   -Wredundant-decls -Wmissing-prototypes -Wstrict-prototypes \
-		   -Wundef -Wshadow \
+		   -Wredundant-decls -Wno-missing-prototypes -Wstrict-prototypes \
+		   -Wundef -Wshadow -Wno-unused-parameter \
 		   -I$(TOOLCHAIN_DIR)/include \
 		   -fno-common $(ARCH_FLAGS) -MD -DSTM32F1
-LDSCRIPT	?= $(BINARY).ld
+LDSCRIPT	= stm32-h103.ld
 LDFLAGS		+= --static -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group \
 		   -L$(TOOLCHAIN_DIR)/lib \
 		   -T$(LDSCRIPT) -nostartfiles -Wl,--gc-sections \
@@ -57,8 +64,6 @@ SCRIPT_DIR      = $(OPENCM3_DIR)/share
 else
 SCRIPT_DIR      = $(shell dirname $(shell readlink -f $(shell which $(PREFIX)-gcc)))/../$(PREFIX)/share
 endif
-
-OBJS		+= $(BINARY).o
 
 OOCD		?= openocd
 OOCD_INTERFACE	?= flossjtag
@@ -112,10 +117,10 @@ flash: $(BINARY).flash
 
 %.o: %.c Makefile
 	@#printf "  CC      $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(CC) $(CFLAGS) -o $@ -c $<
+	$(Q)$(CC) $(CFLAGS) -I . $(INCDIR) -o $@ -c $<
 
 clean:
-	$(Q)rm -f *.o
+	$(Q)rm -f $(OBJS)
 	$(Q)rm -f *.d
 	$(Q)rm -f *.elf
 	$(Q)rm -f *.bin

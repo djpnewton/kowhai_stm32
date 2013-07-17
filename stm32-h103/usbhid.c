@@ -184,13 +184,31 @@ static void hid_set_config(usbd_device *usbd_dev, uint16_t wValue)
 	systick_counter_enable();
 }
 
-usbd_device *usbd_dev;
+static usbd_device *usbd_dev;
+
+static void prot_send_buffer(void* buffer, size_t buffer_size)
+{
+	uint8_t buf[HID_IN_PACKET] = {};
+	int size = HID_IN_PACKET;
+	if (buffer_size < size)
+		size = buffer_size;
+	memcpy(buf, buffer, size);
+	while (usbd_ep_write_packet(usbd_dev, 0x81, buf, HID_IN_PACKET) == 0);
+
+/*
+		gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ,
+			GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
+		gpio_toggle(GPIOC, GPIO12);	// LED on/off
+*/
+}
 
 int main(void)
 {
 	int i;
 
-
+	//
+	// Init USB
+	//
 	rcc_clock_setup_in_hsi_out_48mhz();
 
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPCEN);
@@ -207,6 +225,14 @@ int main(void)
 
 	gpio_clear(GPIOC, GPIO11);
 
+	//
+	// Init kowhai
+	//
+	prot_init(prot_send_buffer);
+
+	//
+	// Service USB
+	//
 	while (1)
 		usbd_poll(usbd_dev);
 }
@@ -217,13 +243,7 @@ void sys_tick_handler(void)
 
 	if (usbd_ep_read_packet(usbd_dev, 0x02, buf, HID_OUT_PACKET) > 0)
 	{
-		gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ,
-			GPIO_CNF_OUTPUT_PUSHPULL, GPIO12);
-		gpio_toggle(GPIOC, GPIO12);	/* LED on/off */
-
-		usbd_ep_write_packet(usbd_dev, 0x81, buf, HID_IN_PACKET);
-		buf[0] = '2';
-		while (usbd_ep_write_packet(usbd_dev, 0x81, buf, HID_IN_PACKET) == 0);
+		prot_process_packet(buf, HID_OUT_PACKET);
 	}
 }
 
