@@ -1,6 +1,0 @@
-Settings
-GPIOD
-P12
-P13
-P14
-P15
