@@ -5,5 +5,9 @@
 *.elf
 *.hex
 *.map
+*.d
+*.bin
+*.list
+*.srec
 
 .dep/
