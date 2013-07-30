@@ -25,23 +25,23 @@
 #include <libopencm3/usb/hid.h>
 #include "prot.h"
 
-#define CDC_DATA_SIZE 64
-#define CDC_DATA_OUT_EP 0x01
-#define CDC_DATA_IN_EP 0x82
 #define CDC_COMMS_IN_EP 0x83
 
-#define HID_IN_REPORTSIZE 64
-#define HID_IN_EP 0x84
-#define HID_OUT_REPORTSIZE 64
-#define HID_OUT_EP 0x05
+#define CDC_DATA_SIZE 64
+#define CDC_DATA_OUT_EP 0x01
+#define CDC_DATA_IN_EP  0x82
+
+#define HID_REPORTSIZE 64
+#define HID_OUT_EP 0x04
+#define HID_IN_EP  0x85
 
 const struct usb_device_descriptor dev = {
 	.bLength = USB_DT_DEVICE_SIZE,
 	.bDescriptorType = USB_DT_DEVICE,
 	.bcdUSB = 0x0200,
-	.bDeviceClass = 0,
-	.bDeviceSubClass = 0,
-	.bDeviceProtocol = 0,
+        .bDeviceClass = 0xEF,	/* Miscellaneous Device */
+        .bDeviceSubClass = 2,	/* Common Class */
+        .bDeviceProtocol = 1,	/* Interface Association */
 	.bMaxPacketSize0 = 64,
 	.idVendor = 0xffff,
 	.idProduct = 0x9fab,
@@ -59,13 +59,13 @@ static const uint8_t hid_report_descriptor[] = {
 	0x75, 0x08,              // report size = 8 bits
 	0x15, 0x00,              // logical minimum = 0
 	0x26, 0xFF, 0x00,        // logical maximum = 255
-	0x95, HID_OUT_REPORTSIZE,// report count
+	0x95, HID_REPORTSIZE,    // report count
 	0x09, 0x01,              // usage
 	0x81, 0x02,              // Input (array)
-	0x95, HID_IN_REPORTSIZE, // report count
+	0x95, HID_REPORTSIZE,    // report count
 	0x09, 0x02,              // usage
 	0x91, 0x02,              // Output (array)
-	0xC0                     // end collection 
+	0xC0                     // end collection
 };
 
 static const struct {
@@ -121,16 +121,16 @@ static const struct usb_endpoint_descriptor cdc_data_endp[] = {{
 static const struct usb_endpoint_descriptor hid_endpoint[] = {{
 	.bLength = USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType = USB_DT_ENDPOINT,
-	.bEndpointAddress = HID_IN_EP,
+	.bEndpointAddress = HID_OUT_EP,
 	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
-	.wMaxPacketSize = HID_IN_REPORTSIZE,
+	.wMaxPacketSize = HID_REPORTSIZE,
 	.bInterval = 0x20,
 }, {
 	.bLength = USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType = USB_DT_ENDPOINT,
-	.bEndpointAddress = HID_OUT_EP,
+	.bEndpointAddress = HID_IN_EP,
 	.bmAttributes = USB_ENDPOINT_ATTR_INTERRUPT,
-	.wMaxPacketSize = HID_OUT_REPORTSIZE,
+	.wMaxPacketSize = HID_REPORTSIZE,
 	.bInterval = 0x20,
 }};
 
@@ -178,7 +178,7 @@ static const struct usb_interface_descriptor cdc_comm_iface[] = {{
 	.bInterfaceClass = USB_CLASS_CDC,
 	.bInterfaceSubClass = USB_CDC_SUBCLASS_ACM,
 	.bInterfaceProtocol = USB_CDC_PROTOCOL_AT,
-	.iInterface = 0,
+	.iInterface = 4,
 
 	.endpoint = cdc_comm_endp,
 
@@ -217,8 +217,20 @@ const struct usb_interface_descriptor hid_iface[] = {{
 	.extralen = sizeof(hid_function),
 }};
 
+static const struct usb_iface_assoc_descriptor cdc_assoc = {
+	.bLength = USB_DT_INTERFACE_ASSOCIATION_SIZE,
+	.bDescriptorType = USB_DT_INTERFACE_ASSOCIATION,
+	.bFirstInterface = 0,
+	.bInterfaceCount = 2,
+	.bFunctionClass = USB_CLASS_CDC,
+	.bFunctionSubClass = USB_CDC_SUBCLASS_ACM,
+	.bFunctionProtocol = USB_CDC_PROTOCOL_AT,
+	.iFunction = 0,
+};
+
 const struct usb_interface ifaces[] = {{
 	.num_altsetting = 1,
+	.iface_assoc = &cdc_assoc,
 	.altsetting = cdc_comm_iface,
 }, {
 	.num_altsetting = 1,
@@ -235,7 +247,7 @@ const struct usb_config_descriptor config = {
 	.bNumInterfaces = 3,
 	.bConfigurationValue = 1,
 	.iConfiguration = 0,
-	.bmAttributes = 0xC0,
+	.bmAttributes = 0x80,
 	.bMaxPower = 0x32,
 
 	.interface = ifaces,
@@ -243,8 +255,9 @@ const struct usb_config_descriptor config = {
 
 static const char *usb_strings[] = {
 	"DJPSoft",
-	"HID Kowhai Demo",
+	"Kowhai Demo",
 	"DEMO",
+	"Kowhai Serial Demo"
 };
 
 /* Buffer to be used for control requests. */
@@ -305,10 +318,10 @@ static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 	(void)usbd_dev;
 
 	char buf[CDC_DATA_SIZE];
-	int len = usbd_ep_read_packet(usbd_dev, CDC_DATA_OUT_EP, buf, 64);
+	int len = usbd_ep_read_packet(usbd_dev, CDC_DATA_OUT_EP, buf, CDC_DATA_SIZE);
 
 	if (len)
-    {
+	{
 		usbd_ep_write_packet(usbd_dev, CDC_DATA_IN_EP, buf, len);
 		buf[len] = 0;
 	}
@@ -316,12 +329,12 @@ static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 
 static void hid_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 {
-	uint8_t buf[HID_OUT_REPORTSIZE] = {};
+	uint8_t buf[HID_REPORTSIZE] = {};
 
-	if (usbd_ep_read_packet(usbd_dev, HID_OUT_EP, buf, HID_OUT_REPORTSIZE) > 0)
+	if (usbd_ep_read_packet(usbd_dev, HID_OUT_EP, buf, HID_REPORTSIZE) > 0)
 	{
-		prot_process_packet(buf, HID_OUT_REPORTSIZE);
-	}	
+		prot_process_packet(buf, HID_REPORTSIZE);
+	}
 }
 
 static void set_config(usbd_device *usbd_dev, uint16_t wValue)
@@ -329,16 +342,17 @@ static void set_config(usbd_device *usbd_dev, uint16_t wValue)
 	(void)wValue;
 	(void)usbd_dev;
 
-	usbd_ep_setup(usbd_dev, CDC_DATA_OUT_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, cdcacm_data_rx_cb);
-	usbd_ep_setup(usbd_dev, CDC_DATA_IN_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, NULL);
 	usbd_ep_setup(usbd_dev, CDC_COMMS_IN_EP, USB_ENDPOINT_ATTR_INTERRUPT, 16, NULL);
 
-	usbd_ep_setup(usbd_dev, HID_IN_EP, USB_ENDPOINT_ATTR_INTERRUPT, HID_IN_REPORTSIZE, NULL);
-	usbd_ep_setup(usbd_dev, HID_OUT_EP, USB_ENDPOINT_ATTR_INTERRUPT, HID_OUT_REPORTSIZE, hid_rx_cb);
+	usbd_ep_setup(usbd_dev, CDC_DATA_OUT_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, cdcacm_data_rx_cb);
+	usbd_ep_setup(usbd_dev, CDC_DATA_IN_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, NULL);
+	
+	usbd_ep_setup(usbd_dev, HID_OUT_EP, USB_ENDPOINT_ATTR_INTERRUPT, HID_REPORTSIZE, hid_rx_cb);
+	usbd_ep_setup(usbd_dev, HID_IN_EP, USB_ENDPOINT_ATTR_INTERRUPT, HID_REPORTSIZE, NULL);
 
 	usbd_register_control_callback(
 				usbd_dev,
-				USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
+				USB_REQ_TYPE_CLASS | USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
 				USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
 				control_request);
 }
@@ -347,12 +361,12 @@ static usbd_device *usbd_dev;
 
 static void prot_send_buffer(void* buffer, size_t buffer_size)
 {
-	uint8_t buf[HID_IN_REPORTSIZE] = {};
-	int size = HID_IN_REPORTSIZE;
+	uint8_t buf[HID_REPORTSIZE] = {};
+	int size = HID_REPORTSIZE;
 	if (buffer_size < size)
 		size = buffer_size;
 	memcpy(buf, buffer, size);
-	while (usbd_ep_write_packet(usbd_dev, HID_IN_EP, buf, HID_IN_REPORTSIZE) == 0);
+	while (usbd_ep_write_packet(usbd_dev, HID_IN_EP, buf, HID_REPORTSIZE) == 0);
 }
 
 void usb_init(void)
@@ -366,7 +380,7 @@ void usb_init(void)
 #else
 ERROR
 #endif
-	usbd_dev = usbd_init(driver, &dev, &config, usb_strings, 3, usbd_control_buffer, sizeof(usbd_control_buffer));
+	usbd_dev = usbd_init(driver, &dev, &config, usb_strings, 4, usbd_control_buffer, sizeof(usbd_control_buffer));
 	usbd_register_set_config_callback(usbd_dev, set_config);
 
 	for (i = 0; i < 0x80000; i++)
