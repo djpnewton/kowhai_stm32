@@ -25,15 +25,17 @@
 #include <libopencm3/usb/hid.h>
 #include "prot.h"
 
-#define CDC_COMMS_IN_EP 0x83
+#define CDC_ACM
+
+#define CDC_COMMS_IN_EP 0x85
 
 #define CDC_DATA_SIZE 64
-#define CDC_DATA_OUT_EP 0x01
-#define CDC_DATA_IN_EP  0x82
+#define CDC_DATA_OUT_EP 0x04
+#define CDC_DATA_IN_EP  0x83
 
 #define HID_REPORTSIZE 64
-#define HID_OUT_EP 0x04
-#define HID_IN_EP  0x85
+#define HID_OUT_EP 0x01
+#define HID_IN_EP  0x82
 
 const struct usb_device_descriptor dev = {
 	.bLength = USB_DT_DEVICE_SIZE,
@@ -88,6 +90,7 @@ static const struct {
 	},
 };
 
+#ifdef CDC_ACM
 /*
  * This notification endpoint isn't implemented. According to CDC spec its
  * optional, but its absence causes a NULL pointer dereference in Linux
@@ -117,6 +120,7 @@ static const struct usb_endpoint_descriptor cdc_data_endp[] = {{
 	.wMaxPacketSize = CDC_DATA_SIZE,
 	.bInterval = 1,
 }};
+#endif
 
 static const struct usb_endpoint_descriptor hid_endpoint[] = {{
 	.bLength = USB_DT_ENDPOINT_SIZE,
@@ -134,6 +138,7 @@ static const struct usb_endpoint_descriptor hid_endpoint[] = {{
 	.bInterval = 0x20,
 }};
 
+#ifdef CDC_ACM
 static const struct {
 	struct usb_cdc_header_descriptor header;
 	struct usb_cdc_call_management_descriptor call_mgmt;
@@ -199,11 +204,16 @@ static const struct usb_interface_descriptor cdc_data_iface[] = {{
 
 	.endpoint = cdc_data_endp,
 }};
+#endif
 
 const struct usb_interface_descriptor hid_iface[] = {{
 	.bLength = USB_DT_INTERFACE_SIZE,
 	.bDescriptorType = USB_DT_INTERFACE,
+#ifdef CDC_ACM
 	.bInterfaceNumber = 2,
+#else
+	.bInterfaceNumber = 0,
+#endif
 	.bAlternateSetting = 0,
 	.bNumEndpoints = 2,
 	.bInterfaceClass = USB_CLASS_HID,
@@ -217,6 +227,7 @@ const struct usb_interface_descriptor hid_iface[] = {{
 	.extralen = sizeof(hid_function),
 }};
 
+#ifdef CDC_ACM
 static const struct usb_iface_assoc_descriptor cdc_assoc = {
 	.bLength = USB_DT_INTERFACE_ASSOCIATION_SIZE,
 	.bDescriptorType = USB_DT_INTERFACE_ASSOCIATION,
@@ -227,15 +238,20 @@ static const struct usb_iface_assoc_descriptor cdc_assoc = {
 	.bFunctionProtocol = USB_CDC_PROTOCOL_AT,
 	.iFunction = 0,
 };
+#endif
 
-const struct usb_interface ifaces[] = {{
+const struct usb_interface ifaces[] = {
+#ifdef CDC_ACM
+{
 	.num_altsetting = 1,
 	.iface_assoc = &cdc_assoc,
 	.altsetting = cdc_comm_iface,
 }, {
 	.num_altsetting = 1,
 	.altsetting = cdc_data_iface,
-}, {
+},
+#endif
+{
 	.num_altsetting = 1,
 	.altsetting = hid_iface,
 }};
@@ -244,10 +260,14 @@ const struct usb_config_descriptor config = {
 	.bLength = USB_DT_CONFIGURATION_SIZE,
 	.bDescriptorType = USB_DT_CONFIGURATION,
 	.wTotalLength = 0,
+#ifdef CDC_ACM
 	.bNumInterfaces = 3,
+#else
+	.bNumInterfaces = 1,
+#endif
 	.bConfigurationValue = 1,
 	.iConfiguration = 0,
-	.bmAttributes = 0x80,
+	.bmAttributes = 0xC0,
 	.bMaxPower = 0x32,
 
 	.interface = ifaces,
@@ -263,7 +283,8 @@ static const char *usb_strings[] = {
 /* Buffer to be used for control requests. */
 uint8_t usbd_control_buffer[128];
 
-static int control_request(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
+#ifdef CDC_ACM
+static int cdc_control_request(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
 			void (**complete)(usbd_device *usbd_dev, struct usb_setup_data *req))
 {
 	(void)complete;
@@ -296,22 +317,29 @@ static int control_request(usbd_device *usbd_dev, struct usb_setup_data *req, ui
 			if (*len < sizeof(struct usb_cdc_line_coding))
 				return 0;
 			return 1;
-		case USB_REQ_GET_DESCRIPTOR:
-			if ((req->bmRequestType != (USB_REQ_TYPE_IN | USB_REQ_TYPE_INTERFACE)) ||
-			   (req->wValue != USB_DT_REPORT << 8))
-			{
-				/* Handle the HID report descriptor. */
-				*buf = (uint8_t *)hid_report_descriptor;
-				*len = sizeof(hid_report_descriptor);
-				return USBD_REQ_HANDLED;
-			}
-			else
-				return USBD_REQ_NOTSUPP;
 	}
-
 	return USBD_REQ_NOTSUPP;
 }
+#endif
 
+static int hid_control_request(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
+			void (**complete)(usbd_device *usbd_dev, struct usb_setup_data *req))
+{
+	(void)complete;
+	(void)usbd_dev;
+
+	if (req->bRequest != USB_REQ_GET_DESCRIPTOR ||
+		req->bmRequestType != (USB_REQ_TYPE_IN | USB_REQ_TYPE_INTERFACE) ||
+		req->wValue != USB_DT_REPORT << 8)
+		return USBD_REQ_NOTSUPP;
+
+	/* Handle the HID report descriptor. */
+	*buf = (uint8_t *)hid_report_descriptor;
+	*len = sizeof(hid_report_descriptor);
+	return USBD_REQ_HANDLED;
+}
+
+#ifdef CDC_ACM
 static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 {
 	(void)ep;
@@ -323,9 +351,9 @@ static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 	if (len)
 	{
 		usbd_ep_write_packet(usbd_dev, CDC_DATA_IN_EP, buf, len);
-		buf[len] = 0;
 	}
 }
+#endif
 
 static void hid_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 {
@@ -342,19 +370,28 @@ static void set_config(usbd_device *usbd_dev, uint16_t wValue)
 	(void)wValue;
 	(void)usbd_dev;
 
+#ifdef CDC_ACM
 	usbd_ep_setup(usbd_dev, CDC_COMMS_IN_EP, USB_ENDPOINT_ATTR_INTERRUPT, 16, NULL);
-
 	usbd_ep_setup(usbd_dev, CDC_DATA_OUT_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, cdcacm_data_rx_cb);
 	usbd_ep_setup(usbd_dev, CDC_DATA_IN_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, NULL);
-	
+#endif
+
 	usbd_ep_setup(usbd_dev, HID_OUT_EP, USB_ENDPOINT_ATTR_INTERRUPT, HID_REPORTSIZE, hid_rx_cb);
 	usbd_ep_setup(usbd_dev, HID_IN_EP, USB_ENDPOINT_ATTR_INTERRUPT, HID_REPORTSIZE, NULL);
 
+#ifdef CDC_ACM
 	usbd_register_control_callback(
 				usbd_dev,
 				USB_REQ_TYPE_CLASS | USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
 				USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
-				control_request);
+				cdc_control_request);
+#endif
+
+	usbd_register_control_callback(
+				usbd_dev,
+				USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
+				USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
+				hid_control_request);
 }
 
 static usbd_device *usbd_dev;
