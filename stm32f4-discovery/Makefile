@@ -60,7 +60,7 @@ LDFLAGS		+= --static -lc -lnosys -L$(TOOLCHAIN_DIR)/lib \
 		   -mthumb -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 OOCD		?= openocd
-OOCD_INTERFACE	?= flossjtag
+OOCD_INTERFACE	?= stlink-v2
 OOCD_BOARD	?= stm32f4discovery
 # Black magic probe specific variables
 # Set the BMP_PORT to a serial port and then BMP is used for flashing
@@ -132,7 +132,7 @@ ifeq ($(OOCD_SERIAL),)
 	$(Q)$(OOCD) -f interface/$(OOCD_INTERFACE).cfg \
 		    -f board/$(OOCD_BOARD).cfg \
 		    -c "init" -c "reset init" \
-		    -c "stm32x mass_erase 0" \
+		    -c "stm32f2x mass_erase 0" \
 		    -c "flash write_image $(*).hex" \
 		    -c "reset" \
 		    -c "shutdown" $(NULL)
@@ -144,7 +144,7 @@ else
 		    -f board/$(OOCD_BOARD).cfg \
 		    -c "ft2232_serial $(OOCD_SERIAL)" \
 		    -c "init" -c "reset init" \
-		    -c "stm32x mass_erase 0" \
+		    -c "stm32f2x mass_erase 0" \
 		    -c "flash write_image $(*).hex" \
 		    -c "reset" \
 		    -c "shutdown" $(NULL)
