@@ -27,15 +27,15 @@
 
 #define CDC_ACM
 
-#define CDC_COMMS_IN_EP 0x85
+#define CDC_COMMS_IN_EP 0x83
 
 #define CDC_DATA_SIZE 64
-#define CDC_DATA_OUT_EP 0x04
-#define CDC_DATA_IN_EP  0x83
+#define CDC_DATA_OUT_EP 0x02
+#define CDC_DATA_IN_EP  0x82
 
 #define HID_REPORTSIZE 64
 #define HID_OUT_EP 0x01
-#define HID_IN_EP  0x82
+#define HID_IN_EP  0x81
 
 const struct usb_device_descriptor dev = {
 	.bLength = USB_DT_DEVICE_SIZE,
@@ -280,11 +280,15 @@ static const char *usb_strings[] = {
 	"Kowhai Serial Demo"
 };
 
-/* Buffer to be used for control requests. */
-uint8_t usbd_control_buffer[128];
+static struct usb_cdc_line_coding line_coding =
+{
+    .dwDTERate = 9600,
+    .bCharFormat = 0,
+    .bParityType = 0,
+    .bDataBits = 8,
+};
 
-#ifdef CDC_ACM
-static int cdc_control_request(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
+static int class_control_request(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
 			void (**complete)(usbd_device *usbd_dev, struct usb_setup_data *req))
 {
 	(void)complete;
@@ -292,6 +296,7 @@ static int cdc_control_request(usbd_device *usbd_dev, struct usb_setup_data *req
 
 	switch (req->bRequest)
 	{
+#ifdef CDC_ACM
 		case USB_CDC_REQ_SET_CONTROL_LINE_STATE:
 		{
 			/*
@@ -299,30 +304,35 @@ static int cdc_control_request(usbd_device *usbd_dev, struct usb_setup_data *req
 			 * even though it's optional in the CDC spec, and we don't
 			 * advertise it in the ACM functional descriptor.
 			 */
-			char local_buf[10];
-			struct usb_cdc_notification *notif = (void *)local_buf;
 
-			/* We echo signals back to host as notification. */
-			notif->bmRequestType = 0xA1;
-			notif->bNotification = USB_CDC_NOTIFY_SERIAL_STATE;
-			notif->wValue = 0;
-			notif->wIndex = 0;
-			notif->wLength = 2;
-			local_buf[8] = req->wValue & 3;
-			local_buf[9] = 0;
-			// usbd_ep_write_packet(0x83, buf, 10);
+			int8_t dtr = (req->wValue & (1 << 0)) ? 1 : 0;
+			int8_t rts = (req->wValue & (1 << 1)) ? 1 : 0;
+
 			return 1;
 		}
 		case USB_CDC_REQ_SET_LINE_CODING:
 			if (*len < sizeof(struct usb_cdc_line_coding))
 				return 0;
 			return 1;
+#define USB_CDC_REQ_GET_LINE_CODING		0x21
+		case USB_CDC_REQ_GET_LINE_CODING:
+			if (*len >= sizeof(struct usb_cdc_line_coding))
+			{
+				*buf = &line_coding;
+				*len = sizeof(line_coding);
+			}
+
+			return 1;
+#endif
+#define HID_REQ_SET_IDLE    0x0A
+        case HID_REQ_SET_IDLE:
+            // TODO: parse the set idle parameters
+            return 1;
 	}
 	return USBD_REQ_NOTSUPP;
 }
-#endif
 
-static int hid_control_request(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
+static int standard_control_request(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
 			void (**complete)(usbd_device *usbd_dev, struct usb_setup_data *req))
 {
 	(void)complete;
@@ -353,6 +363,10 @@ static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 		usbd_ep_write_packet(usbd_dev, CDC_DATA_IN_EP, buf, len);
 	}
 }
+
+static void cdcacm_data_tx_cb(usbd_device *usbd_dev, uint8_t ep)
+{
+}
 #endif
 
 static void hid_rx_cb(usbd_device *usbd_dev, uint8_t ep)
@@ -370,28 +384,26 @@ static void set_config(usbd_device *usbd_dev, uint16_t wValue)
 	(void)wValue;
 	(void)usbd_dev;
 
-#ifdef CDC_ACM
-	usbd_ep_setup(usbd_dev, CDC_COMMS_IN_EP, USB_ENDPOINT_ATTR_INTERRUPT, 16, NULL);
-	usbd_ep_setup(usbd_dev, CDC_DATA_OUT_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, cdcacm_data_rx_cb);
-	usbd_ep_setup(usbd_dev, CDC_DATA_IN_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, NULL);
-#endif
-
 	usbd_ep_setup(usbd_dev, HID_OUT_EP, USB_ENDPOINT_ATTR_INTERRUPT, HID_REPORTSIZE, hid_rx_cb);
 	usbd_ep_setup(usbd_dev, HID_IN_EP, USB_ENDPOINT_ATTR_INTERRUPT, HID_REPORTSIZE, NULL);
 
 #ifdef CDC_ACM
+	usbd_ep_setup(usbd_dev, CDC_DATA_IN_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, cdcacm_data_tx_cb);
+	usbd_ep_setup(usbd_dev, CDC_DATA_OUT_EP, USB_ENDPOINT_ATTR_BULK, CDC_DATA_SIZE, cdcacm_data_rx_cb);
+	usbd_ep_setup(usbd_dev, CDC_COMMS_IN_EP, USB_ENDPOINT_ATTR_INTERRUPT, 16, NULL);
+#endif
+
 	usbd_register_control_callback(
 				usbd_dev,
-				USB_REQ_TYPE_CLASS | USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
+				USB_REQ_TYPE_CLASS | USB_REQ_TYPE_INTERFACE,
 				USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
-				cdc_control_request);
-#endif
+				class_control_request);
 
 	usbd_register_control_callback(
 				usbd_dev,
 				USB_REQ_TYPE_STANDARD | USB_REQ_TYPE_INTERFACE,
 				USB_REQ_TYPE_TYPE | USB_REQ_TYPE_RECIPIENT,
-				hid_control_request);
+				standard_control_request);
 }
 
 static usbd_device *usbd_dev;
@@ -399,12 +411,15 @@ static usbd_device *usbd_dev;
 static void prot_send_buffer(void* buffer, size_t buffer_size)
 {
 	uint8_t buf[HID_REPORTSIZE] = {};
-	int size = HID_REPORTSIZE;
+	size_t size = HID_REPORTSIZE;
 	if (buffer_size < size)
 		size = buffer_size;
 	memcpy(buf, buffer, size);
 	while (usbd_ep_write_packet(usbd_dev, HID_IN_EP, buf, HID_REPORTSIZE) == 0);
 }
+
+/* Buffer to be used for control requests. */
+uint8_t usbd_control_buffer[128];
 
 void usb_init(void)
 {
