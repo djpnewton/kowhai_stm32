@@ -23,10 +23,14 @@
 #include <libopencm3/stm32/f4/gpio.h>
 #include "usb.h"
 
-int main(void)
+void delay(void)
 {
 	int i;
-
+	for (i = 0; i < 0x400000; i++)
+		__asm__("nop");
+}
+int main(void)
+{
 	rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_120MHZ]);
 
 	rcc_peripheral_enable_clock(&RCC_AHB1ENR, RCC_AHB1ENR_IOPAEN);
@@ -47,17 +51,13 @@ int main(void)
 	usb_init();
 
 	// flash leds then off
-	for (i = 0; i < 0x400000; i++)
-		__asm__("nop");
+	delay();
 	gpio_set(GPIOD, GPIO13);
-	for (i = 0; i < 0x400000; i++)
-		__asm__("nop");
+	delay();
 	gpio_set(GPIOD, GPIO14);
-	for (i = 0; i < 0x400000; i++)
-		__asm__("nop");
+	delay();
 	gpio_set(GPIOD, GPIO15);
-	for (i = 0; i < 0x400000; i++)
-		__asm__("nop");
+	delay();
 	gpio_clear(GPIOD, GPIO12 | GPIO13 | GPIO14 | GPIO15);
 
 	usb_poll_forever();
