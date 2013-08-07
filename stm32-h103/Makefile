@@ -39,17 +39,20 @@ $(info We seem to be building the example in the source directory. Using local l
 endif
 endif
 
-SRC		= main.c ../protocol/prot.c ../protocol/usb.c ../kowhai/kowhai.c ../kowhai/kowhai_protocol.c ../kowhai/kowhai_protocol_server.c
+SRC		= main.c \
+		../protocol/prot.c ../protocol/usb.c \
+		../protocol/nrf24l01.c ../protocol/nrf24l01_hw_stm32.c ../protocol/nrf24l01_regs.c \
+		../kowhai/kowhai.c ../kowhai/kowhai_protocol.c ../kowhai/kowhai_protocol_server.c
 
-INCDIR		= ../protocol ../kowhai
+INC		= -I../protocol -I../protocol/include -I../kowhai
 
 OBJS		= $(SRC:.c=.o)
 ARCH_FLAGS      = -mthumb -mcpu=cortex-m3 -msoft-float
-CFLAGS		+= -Os -g \
+CFLAGS		+= -O0 -g \
 		   -Wall -Wextra -Wimplicit-function-declaration \
 		   -Wredundant-decls -Wno-missing-prototypes -Wstrict-prototypes \
-		   -Wundef -Wshadow -Wno-unused-parameter \
-		   -I$(TOOLCHAIN_DIR)/include \
+		   -Wundef -Wno-unused-parameter \
+		   -I$(TOOLCHAIN_DIR)/include $(INC) \
 		   -fno-common $(ARCH_FLAGS) -MD -DSTM32F1
 LDSCRIPT	= stm32-h103.ld
 LDFLAGS		+= --static -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group \
@@ -117,7 +120,7 @@ flash: $(BINARY).flash
 
 %.o: %.c Makefile
 	@#printf "  CC      $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(CC) $(CFLAGS) -I $(INCDIR) -o $@ -c $<
+	$(Q)$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
 	$(Q)rm -f $(OBJS)

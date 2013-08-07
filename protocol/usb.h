@@ -3,6 +3,7 @@
 
 void usb_init(void);
 void usb_poll_forever(void);
+void usb_poll(void);
 
 #endif
 

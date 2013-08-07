@@ -447,3 +447,9 @@ void usb_poll_forever(void)
 		usbd_poll(usbd_dev);
 }
 
+void usb_poll(void)
+{
+	usbd_poll(usbd_dev);
+}
+
+
