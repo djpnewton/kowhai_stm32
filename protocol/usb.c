@@ -24,6 +24,7 @@
 #include <libopencm3/usb/cdc.h>
 #include <libopencm3/usb/hid.h>
 #include "prot.h"
+#include "usb.h"
 
 #define CDC_ACM
 
@@ -288,6 +289,8 @@ static struct usb_cdc_line_coding line_coding =
     .bDataBits = 8,
 };
 
+static usb_serial_read_cb_t serial_read_cb = NULL;
+
 static int class_control_request(usbd_device *usbd_dev, struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
 			void (**complete)(usbd_device *usbd_dev, struct usb_setup_data *req))
 {
@@ -358,9 +361,9 @@ static void cdcacm_data_rx_cb(usbd_device *usbd_dev, uint8_t ep)
 	char buf[CDC_DATA_SIZE];
 	int len = usbd_ep_read_packet(usbd_dev, CDC_DATA_OUT_EP, buf, CDC_DATA_SIZE);
 
-	if (len)
+	if (len || serial_read_cb != NULL)
 	{
-		usbd_ep_write_packet(usbd_dev, CDC_DATA_IN_EP, buf, len);
+		serial_read_cb(buf[0]);
 	}
 }
 
@@ -421,7 +424,7 @@ static void prot_send_buffer(void* buffer, size_t buffer_size)
 /* Buffer to be used for control requests. */
 uint8_t usbd_control_buffer[128];
 
-void usb_init(void)
+void usb_init(usb_serial_read_cb_t serial_read)
 {
 	int i;
 
@@ -439,6 +442,8 @@ ERROR
 		__asm__("nop");
 
 	prot_init(prot_send_buffer);
+
+	serial_read_cb = serial_read;
 }
 
 void usb_poll_forever(void)
@@ -450,6 +455,11 @@ void usb_poll_forever(void)
 void usb_poll(void)
 {
 	usbd_poll(usbd_dev);
+}
+
+void usb_write_serial(char c)
+{
+	usbd_ep_write_packet(usbd_dev, CDC_DATA_IN_EP, &c, sizeof(c));
 }
 
 
