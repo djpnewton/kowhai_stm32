@@ -22,6 +22,12 @@
 #include <libopencm3/stm32/f4/rcc.h>
 #include <libopencm3/stm32/f4/gpio.h>
 #include "usb.h"
+#include "wireless.h"
+
+void serial_read_cb(char c)
+{
+    wireless_send_serial_char(c);
+}
 
 void delay(void)
 {
@@ -48,7 +54,10 @@ int main(void)
     gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE,
             GPIO9 | GPIO11 | GPIO12);
     gpio_set_af(GPIOA, GPIO_AF10, GPIO9 | GPIO11 | GPIO12);
-    usb_init();
+    usb_init(serial_read_cb);
+
+    // wireless init
+    wireless_init(AG_MODE_MASTER);
 
     // flash leds then off
     delay();
@@ -60,5 +69,9 @@ int main(void)
     delay();
     gpio_clear(GPIOD, GPIO12 | GPIO13 | GPIO14 | GPIO15);
 
-    usb_poll_forever();
+    while(1)
+    {
+        usb_poll();
+        wireless_poll();
+    }
 }

@@ -41,16 +41,19 @@ $(info We seem to be building the example in the source directory. Using local l
 endif
 endif
 
-SRC		= main.c ../protocol/prot.c ../protocol/usb.c ../kowhai/kowhai.c ../kowhai/kowhai_protocol.c ../kowhai/kowhai_protocol_server.c
+SRC		= main.c \
+		../protocol/prot.c ../protocol/usb.c ../protocol/wireless.c \
+		../protocol/nrf24l01.c ../protocol/nrf24l01_hw_stm32.c ../protocol/nrf24l01_regs.c \
+		../kowhai/kowhai.c ../kowhai/kowhai_protocol.c ../kowhai/kowhai_protocol_server.c
 
-INCDIR		= ../protocol ../kowhai
+INC		= -I../protocol -I../protocol/include -I../kowhai
 
 OBJS		= $(SRC:.c=.o)
 CFLAGS		+= -Os -g \
 		   -Wall -Wextra -Wimplicit-function-declaration \
 		   -Wredundant-decls -Wno-missing-prototypes -Wstrict-prototypes \
 		   -Wundef -Wshadow -Wno-unused-parameter \
-		   -I$(TOOLCHAIN_DIR)/include \
+		   -I$(TOOLCHAIN_DIR)/include $(INC) \
 		   -fno-common -mcpu=cortex-m4 -mthumb \
 		   -mfloat-abi=hard -mfpu=fpv4-sp-d16 -MD -DSTM32F4
 LDSCRIPT	= stm32f4-discovery.ld
@@ -108,7 +111,7 @@ flash: $(BINARY).flash
 
 %.o: %.c Makefile
 	@#printf "  CC      $(subst $(shell pwd)/,,$(@))\n"
-	$(Q)$(CC) $(CFLAGS) -I $(INCDIR) -o $@ -c $<
+	$(Q)$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
 	$(Q)rm -f $(OBJS)

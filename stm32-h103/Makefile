@@ -40,7 +40,7 @@ endif
 endif
 
 SRC		= main.c \
-		../protocol/prot.c ../protocol/usb.c \
+		../protocol/prot.c ../protocol/usb.c ../protocol/wireless.c \
 		../protocol/nrf24l01.c ../protocol/nrf24l01_hw_stm32.c ../protocol/nrf24l01_regs.c \
 		../kowhai/kowhai.c ../kowhai/kowhai_protocol.c ../kowhai/kowhai_protocol_server.c
 
