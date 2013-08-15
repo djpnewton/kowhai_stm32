@@ -17,8 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef STM32F1
 #include <libopencm3/stm32/f1/rcc.h>
 #include <libopencm3/stm32/f1/gpio.h>
+#elif STM32F4
+#include <libopencm3/stm32/f4/rcc.h>
+#include <libopencm3/stm32/f4/gpio.h>
+#define GPIO_SPI2_NSS GPIO12
+#endif
 #include <libopencm3/stm32/spi.h>
 
 #include "nrf24l01_hw.h"
@@ -28,9 +34,16 @@
 
 void nrf_init(void)
 {
+#ifdef STM32F1
      rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPBEN);
+#elif STM32F4
+     rcc_peripheral_enable_clock(&RCC_AHB1ENR, RCC_AHB1ENR_IOPBEN);
+#else
+     ERROR
+#endif
      rcc_peripheral_enable_clock(&RCC_APB1ENR, RCC_APB1ENR_SPI2EN);
 
+#ifdef STM32F1
      /* Configure SCK and MOSI */
      gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ,
                    GPIO_CNF_OUTPUT_ALTFN_PUSHPULL,
@@ -43,6 +56,23 @@ void nrf_init(void)
      /* Configure CS pin on PB12. */
      gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ,
                    GPIO_CNF_OUTPUT_PUSHPULL, GPIO_SPI2_NSS);
+#elif STM32F4
+     /* Configure SCK, MISO and MOSI */
+     gpio_mode_setup(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE,
+             /* SCK */
+             GPIO13 |
+             /* MISO */
+             GPIO14 |
+             /* MOSI */
+             GPIO15);
+     gpio_set_af(GPIOB, GPIO_AF5, GPIO13 | GPIO14 | GPIO15);
+
+     /* Configure CS pin on PB12. */
+     gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT,
+                     GPIO_PUPD_NONE, GPIO_SPI2_NSS);
+#else
+     ERROR
+#endif
 
      spi_set_unidirectional_mode(SPI2); 		/* We want to send only. */
      spi_set_dff_8bit(SPI2);
