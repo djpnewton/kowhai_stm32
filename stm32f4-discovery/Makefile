@@ -52,7 +52,7 @@ OBJS		= $(SRC:.c=.o)
 CFLAGS		+= -Os -g \
 		   -Wall -Wextra -Wimplicit-function-declaration \
 		   -Wredundant-decls -Wno-missing-prototypes -Wstrict-prototypes \
-		   -Wundef -Wshadow -Wno-unused-parameter \
+		   -Wundef -Wno-unused-parameter \
 		   -I$(TOOLCHAIN_DIR)/include $(INC) \
 		   -fno-common -mcpu=cortex-m4 -mthumb \
 		   -mfloat-abi=hard -mfpu=fpv4-sp-d16 -MD -DSTM32F4
