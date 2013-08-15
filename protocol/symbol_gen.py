@@ -1,15 +1,17 @@
 # get symbol tokens
 f = open("symbols.txt")
-syms = f.read().split()
+syms = f.read().split("\n")
 
-# strip duplicates
+# strip duplicates and comments
 def check_exists(sym, syms):
     for s in syms:
         if s.lower() == sym.lower():
             return True
+def is_comment(sym):
+    return sym[0] == '#'
 syms2 = []
 for sym in syms:
-    if not check_exists(sym, syms2):
+    if sym and not check_exists(sym, syms2) and not is_comment(sym):
         syms2.append(sym)
 syms = syms2
 
@@ -24,7 +26,7 @@ for i in range(len(syms)):
 f.write("};\n\n")
 for i in range(len(syms)):
     sym = syms[i]
-    f.write("#define SYM_%s\t\t%d\n" % (sym.upper(), i))
+    f.write("#define SYM_%s\t\t%d\n" % (sym.upper().replace(" ", "_"), i))
 f.write("\n#endif\n");
 
 # write Symbols.cs
@@ -37,7 +39,7 @@ for sym in syms:
 f.write("        };\n");
 f.write("        public enum Constants\n        {\n")
 for sym in syms:
-    f.write("            %s,\n" % sym)
+    f.write("            %s,\n" % sym.replace(" ", "_"))
 f.write("        };\n    }\n}\n");
 
 
