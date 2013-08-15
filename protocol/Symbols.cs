@@ -24,6 +24,9 @@ namespace KowhaiSymbols
             "P13",
             "P14",
             "P15",
+            "AG Addresses",
+            "Address",
+            "Digit",
         };
         public enum Constants
         {
@@ -47,6 +50,9 @@ namespace KowhaiSymbols
             P13,
             P14,
             P15,
+            AG_Addresses,
+            Address,
+            Digit,
         };
     }
 }

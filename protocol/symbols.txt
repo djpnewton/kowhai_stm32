@@ -1,3 +1,4 @@
+# Settings
 Settings
 GPIOA
 GPIOB
@@ -18,4 +19,9 @@ P12
 P13
 P14
 P15
+
+# Functions
+AG Addresses
+Address
+Digit
 

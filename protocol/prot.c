@@ -39,7 +39,20 @@ struct kowhai_node_t settings_descriptor[] =
 };
 
 //
-// settings tree structs
+// air goblin addresses descriptor
+//
+
+struct kowhai_node_t ag_addrs_descriptor[] =
+{
+    { KOW_BRANCH_START,     SYM_AG_ADDRESSES,   1,                0 },
+    { KOW_BRANCH_START,     SYM_ADDRESS,        8,                0 },
+    { KOW_UINT8,            SYM_DIGIT,          5,                0 },
+    { KOW_BRANCH_END,       SYM_ADDRESS,        0,                0 },
+    { KOW_BRANCH_END,       SYM_AG_ADDRESSES,   0,                0 },
+};
+
+//
+// tree structs
 //
 
 #pragma pack(1)
@@ -60,15 +73,22 @@ struct settings_data_t
 
 static struct settings_data_t settings;
 
+static union function_data_t
+{
+    uint8_t ag_addresses[8][5];
+} function_data;
+
 //
 // server structures
 //
 
 struct kowhai_protocol_server_tree_item_t tree_list[] = {
-    { KOW_TREE_ID(SYM_SETTINGS),                settings_descriptor,            sizeof(settings_descriptor),            &settings },
+    { KOW_TREE_ID(SYM_SETTINGS),                    settings_descriptor,            sizeof(settings_descriptor),            &settings },
+    { KOW_TREE_ID_FUNCTION_ONLY(SYM_AG_ADDRESSES),  ag_addrs_descriptor,            sizeof(ag_addrs_descriptor),            &function_data.ag_addresses },
 };
 struct kowhai_protocol_id_list_item_t tree_id_list[COUNT_OF(tree_list)];
 struct kowhai_protocol_server_function_item_t function_list[] = {
+    { KOW_FUNCTION_ID(SYM_AG_ADDRESSES), {KOW_UNDEFINED_SYMBOL, SYM_AG_ADDRESSES} },
 };
 struct kowhai_protocol_id_list_item_t function_id_list[COUNT_OF(function_list)];
 
@@ -142,7 +162,15 @@ void server_buffer_send(pkowhai_protocol_server_t server, void* param, void* buf
 
 int function_called(pkowhai_protocol_server_t server, void* param, uint16_t function_id)
 {
-    return 1;
+    switch (function_id)
+    {
+        case SYM_AG_ADDRESSES:
+            function_data.ag_addresses[0][0] = 0xff;
+            function_data.ag_addresses[0][1] = 0x00;
+            function_data.ag_addresses[0][2] = 0xff;
+            return 1;
+    }
+    return 0;
 }
 
 void prot_init(prot_send_buffer_t send_buffer)

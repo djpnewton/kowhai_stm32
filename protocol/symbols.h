@@ -22,6 +22,9 @@ char* symbols[] = {
 	"P13",
 	"P14",
 	"P15",
+	"AG Addresses",
+	"Address",
+	"Digit",
 };
 
 #define SYM_SETTINGS		0
@@ -44,5 +47,8 @@ char* symbols[] = {
 #define SYM_P13		17
 #define SYM_P14		18
 #define SYM_P15		19
+#define SYM_AG_ADDRESSES		20
+#define SYM_ADDRESS		21
+#define SYM_DIGIT		22
 
 #endif
