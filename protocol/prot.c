@@ -4,6 +4,7 @@
 
 #include "prot.h"
 #include "../kowhai/kowhai_protocol_server.h"
+#include "wireless.h"
 
 #ifdef STM32F1
 #include <libopencm3/stm32/f1/gpio.h>
@@ -45,8 +46,9 @@ struct kowhai_node_t settings_descriptor[] =
 struct kowhai_node_t ag_addrs_descriptor[] =
 {
     { KOW_BRANCH_START,     SYM_AG_ADDRESSES,   1,                0 },
-    { KOW_BRANCH_START,     SYM_ADDRESS,        8,                0 },
-    { KOW_UINT8,            SYM_DIGIT,          5,                0 },
+    { KOW_UINT8,            SYM_COUNT,          1,                0 },
+    { KOW_BRANCH_START,     SYM_ADDRESS,        AG_MAX_ADDRS,     0 },
+    { KOW_UINT8,            SYM_DIGIT,          AG_ADDR_LEN,      0 },
     { KOW_BRANCH_END,       SYM_ADDRESS,        0,                0 },
     { KOW_BRANCH_END,       SYM_AG_ADDRESSES,   0,                0 },
 };
@@ -65,6 +67,12 @@ struct settings_data_t
     uint8_t gpio_d[16];
 };
 
+struct ag_addresses_t
+{
+    uint8_t count;
+    uint8_t address[AG_MAX_ADDRS][AG_ADDR_LEN];
+};
+
 #pragma pack()
 
 //
@@ -75,7 +83,7 @@ static struct settings_data_t settings;
 
 static union function_data_t
 {
-    uint8_t ag_addresses[8][5];
+    struct ag_addresses_t ag_addresses;
 } function_data;
 
 //
@@ -89,6 +97,7 @@ struct kowhai_protocol_server_tree_item_t tree_list[] = {
 struct kowhai_protocol_id_list_item_t tree_id_list[COUNT_OF(tree_list)];
 struct kowhai_protocol_server_function_item_t function_list[] = {
     { KOW_FUNCTION_ID(SYM_AG_ADDRESSES), {KOW_UNDEFINED_SYMBOL, SYM_AG_ADDRESSES} },
+    { KOW_FUNCTION_ID(SYM_AG_PING),      {KOW_UNDEFINED_SYMBOL, KOW_UNDEFINED_SYMBOL} },
 };
 struct kowhai_protocol_id_list_item_t function_id_list[COUNT_OF(function_list)];
 
@@ -165,9 +174,13 @@ int function_called(pkowhai_protocol_server_t server, void* param, uint16_t func
     switch (function_id)
     {
         case SYM_AG_ADDRESSES:
-            function_data.ag_addresses[0][0] = 0xff;
-            function_data.ag_addresses[0][1] = 0x00;
-            function_data.ag_addresses[0][2] = 0xff;
+            function_data.ag_addresses.count = 1;
+            function_data.ag_addresses.address[0][0] = 0xff;
+            function_data.ag_addresses.address[0][1] = 0x00;
+            function_data.ag_addresses.address[0][2] = 0xff;
+            return 1;
+        case SYM_AG_PING:
+            wireless_master_send_serial_char('x');
             return 1;
     }
     return 0;

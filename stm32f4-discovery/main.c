@@ -24,9 +24,11 @@
 #include "usb.h"
 #include "wireless.h"
 
+uint8_t wireless_addr[] = {1, 2, 3, 4, 5};
+
 void serial_read_cb(char c)
 {
-    wireless_send_serial_char(c);
+    wireless_master_send_serial_char(c);
 }
 
 void delay(void)
@@ -35,6 +37,7 @@ void delay(void)
     for (i = 0; i < 0x400000; i++)
         __asm__("nop");
 }
+
 int main(void)
 {
     rcc_clock_setup_hse_3v3(&hse_8mhz_3v3[CLOCK_3V3_120MHZ]);
@@ -57,7 +60,7 @@ int main(void)
     usb_init(serial_read_cb);
 
     // wireless init
-    wireless_init(AG_MODE_MASTER);
+    wireless_init(AG_MODE_MASTER, wireless_addr);
 
     // flash leds then off
     delay();

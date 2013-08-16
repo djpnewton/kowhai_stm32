@@ -22,6 +22,8 @@ P15
 
 # Functions
 AG Addresses
+Count
 Address
 Digit
+AG Ping
 
