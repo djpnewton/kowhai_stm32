@@ -3,14 +3,18 @@
 #include <libopencm3/stm32/f1/gpio.h>
 #include <string.h>
 
-#define AG_CMD_DATA 0
 #define AG_CMD_ACKWAIT 1
-#define AG_CMD_ADDR 2
+#define AG_CMD_SERIALCHAR 2
+#define AG_CMD_ADDR 3
 
 struct ag_payload_t
 {
     uint8_t cmd;
     uint8_t data;
+    uint8_t data2;
+    uint8_t data3;
+    uint8_t data4;
+    uint8_t data5;
 };
 
 static int _mode;
@@ -61,13 +65,14 @@ static void _nrf_poll(void)
         struct ag_payload_t* ag_payload = p.data;
         switch (ag_payload->cmd)
         {
-            case AG_CMD_DATA:
+            case AG_CMD_SERIALCHAR:
                 // echo back data packets via nrf ack
                 nrf_write_ack_pl(&p, 0);
                 gpio_toggle(GPIOC, GPIO12);
                 break;
             case AG_CMD_ADDR:
-                memcpy(p.data, _addr, AG_ADDR_LEN);
+                // echo back address via nrf ack
+                memcpy(&ag_payload->data, _addr, AG_ADDR_LEN);
                 nrf_write_ack_pl(&p, 1);
                 gpio_toggle(GPIOC, GPIO12);
                 break;
@@ -92,7 +97,7 @@ void wireless_master_send_serial_char(char c)
     nrf_payload p;
     struct ag_payload_t* ag_payload = (struct ag_payload_t*)p.data;
     p.size = sizeof(struct ag_payload_t);
-    ag_payload->cmd = AG_CMD_DATA;
+    ag_payload->cmd = AG_CMD_SERIALCHAR;
     ag_payload->data = c;
     res = nrf_send_blocking(&p);
     if (res == sizeof(struct ag_payload_t))
@@ -113,7 +118,33 @@ void wireless_master_send_serial_char(char c)
 
 void wireless_master_find_slaves(uint8_t* count, uint8_t addrs[AG_MAX_ADDRS][AG_ADDR_LEN])
 {
-
+    int res;
+    nrf_payload p;
+    struct ag_payload_t* ag_payload = (struct ag_payload_t*)p.data;
+    // init params
+    *count = 0;
+    // change to discovery address
+    wireless_set_address(_discovery_address);
+    // send address request command
+    ag_payload->cmd = AG_CMD_ADDR;
+    res = nrf_send_blocking(&p);
+    if (res == sizeof(struct ag_payload_t))
+    {
+        ag_payload->cmd = AG_CMD_ACKWAIT;
+        res = nrf_send_blocking(&p);        
+        if (res == sizeof(struct ag_payload_t))
+        {
+            res = nrf_read_ack_pl(&p);
+            if (res == sizeof(struct ag_payload_t))
+            {
+                memcpy(addrs[*count], &ag_payload->data, AG_ADDR_LEN);
+                (*count)++;
+                gpio_toggle(GPIOC, GPIO12);
+            }
+        }
+    }
+    // change back to standard address
+    wireless_set_address(_addr);
 }
 
 void wireless_poll(void)
