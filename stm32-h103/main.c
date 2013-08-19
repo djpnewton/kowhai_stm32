@@ -4,9 +4,11 @@
 #include "wireless.h"
 #include "usb.h"
 
+uint8_t wireless_addr[] = {1, 2, 3, 4, 5};
+
 void serial_read_cb(char c)
 {
-    wireless_send_serial_char(c);
+    wireless_master_send_serial_char(c);
 }
 
 int main(void)
@@ -30,7 +32,7 @@ int main(void)
     gpio_clear(GPIOC, GPIO11);
 
     // wireless init
-    wireless_init(AG_MODE_MASTER);
+    wireless_init(AG_MODE_SLAVE, wireless_addr);
 
     // led off
     for (i = 0; i < 0x400000; i++)
