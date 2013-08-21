@@ -133,6 +133,7 @@ void wireless_master_find_slaves(uint8_t* count, uint8_t addrs[AG_MAX_ADDRS][AG_
     int res;
     nrf_payload p;
     struct ag_payload_t* ag_payload = (struct ag_payload_t*)p.data;
+    p.size = sizeof(struct ag_payload_t);
     // init params
     *count = 0;
     // change to discovery address
