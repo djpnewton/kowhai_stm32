@@ -10,11 +10,11 @@
 struct ag_payload_t
 {
     uint8_t cmd;
-    uint8_t data;
-    uint8_t data2;
-    uint8_t data3;
-    uint8_t data4;
-    uint8_t data5;
+    union
+    {
+        uint8_t chr;
+        uint8_t addr[1/*AG_ADDR_LEN*/]; //TODO: send with payload size greater then 2 not working =(
+    } data;
 };
 
 static int _mode;
@@ -74,7 +74,7 @@ static void _nrf_poll(void)
     res = nrf_receive_blocking(&p);
     if (res == sizeof(struct ag_payload_t))
     {
-        struct ag_payload_t* ag_payload = p.data;
+        struct ag_payload_t* ag_payload = (struct ag_payload_t*)p.data;
         switch (ag_payload->cmd)
         {
             case AG_CMD_SERIALCHAR:
@@ -84,7 +84,7 @@ static void _nrf_poll(void)
                 break;
             case AG_CMD_ADDR:
                 // echo back address via nrf ack
-                memcpy(&ag_payload->data, _addr, AG_ADDR_LEN);
+                memcpy(ag_payload->data.addr, _addr, AG_ADDR_LEN);
                 nrf_write_ack_pl(&p, 1);
                 gpio_toggle(GPIOC, GPIO12);
                 break;
@@ -110,7 +110,7 @@ void wireless_master_send_serial_char(char c)
     struct ag_payload_t* ag_payload = (struct ag_payload_t*)p.data;
     p.size = sizeof(struct ag_payload_t);
     ag_payload->cmd = AG_CMD_SERIALCHAR;
-    ag_payload->data = c;
+    ag_payload->data.chr = c;
     res = nrf_send_blocking(&p);
     if (res == sizeof(struct ag_payload_t))
     {
@@ -121,7 +121,7 @@ void wireless_master_send_serial_char(char c)
             res = nrf_read_ack_pl(&p);
             if (res == sizeof(struct ag_payload_t))
             {
-                usb_write_serial(ag_payload->data);
+                usb_write_serial(ag_payload->data.chr);
                 gpio_toggle(GPIOC, GPIO12);
             }
         }
@@ -150,7 +150,7 @@ void wireless_master_find_slaves(uint8_t* count, uint8_t addrs[AG_MAX_ADDRS][AG_
             res = nrf_read_ack_pl(&p);
             if (res == sizeof(struct ag_payload_t))
             {
-                memcpy(addrs[*count], &ag_payload->data, AG_ADDR_LEN);
+                memcpy(addrs[*count], ag_payload->data.addr, AG_ADDR_LEN);
                 (*count)++;
                 gpio_toggle(GPIOC, GPIO12);
             }
