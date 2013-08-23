@@ -174,11 +174,9 @@ int function_called(pkowhai_protocol_server_t server, void* param, uint16_t func
     switch (function_id)
     {
         case SYM_AG_ADDRESSES:
-            wireless_master_find_slaves(&function_data.ag_addresses.count, function_data.ag_addresses.address);
-            return 1;
+            return wireless_master_find_slaves(&function_data.ag_addresses.count, function_data.ag_addresses.address);
         case SYM_AG_PING:
-            wireless_master_send_serial_char('x');
-            return 1;
+            return wireless_master_send_serial_char('x');
     }
     return 0;
 }

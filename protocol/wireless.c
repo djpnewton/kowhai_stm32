@@ -21,6 +21,12 @@ static int _mode;
 static uint8_t _discovery_address[] = {9, 9, 0, 5, 5};
 static uint8_t _addr[AG_ADDR_LEN];
 
+static void _delay(unsigned long n)
+{
+    while (n-- > 0)
+        __asm__("nop");
+}
+
 // this nrf library howto at http://gpio.kaltpost.de/?page_id=726
 static void _nrf_init(int mode, uint8_t addr[AG_ADDR_LEN])
 {
@@ -62,8 +68,7 @@ static void _nrf_init(int mode, uint8_t addr[AG_ADDR_LEN])
     }
 
     // wait for radio to power up
-    for (i = 0; i < 0x400000; i++)
-        __asm__("nop");
+    _delay(0x100000);
 }
 
 static void _nrf_poll(void)
@@ -78,12 +83,12 @@ static void _nrf_poll(void)
         switch (ag_payload->cmd)
         {
             case AG_CMD_SERIALCHAR:
-                // echo back data packets via nrf ack
+                // echo back data packet via nrf ack
                 nrf_write_ack_pl(&p, 0);
                 gpio_toggle(GPIOC, GPIO12);
                 break;
             case AG_CMD_ADDR:
-                // echo back address via nrf ack
+                // write back address via nrf ack
                 memcpy(ag_payload->data.addr, _addr, AG_ADDR_LEN);
                 nrf_write_ack_pl(&p, 1);
                 gpio_toggle(GPIOC, GPIO12);
@@ -103,7 +108,7 @@ void wireless_set_address(uint8_t addr[AG_ADDR_LEN])
     _nrf_init(_mode, addr);
 }
 
-void wireless_master_send_serial_char(char c)
+int wireless_master_send_serial_char(char c)
 {
     int res;
     nrf_payload p;
@@ -115,7 +120,7 @@ void wireless_master_send_serial_char(char c)
     if (res == sizeof(struct ag_payload_t))
     {
         ag_payload->cmd = AG_CMD_ACKWAIT;
-        res = nrf_send_blocking(&p);        
+        res = nrf_send_blocking(&p);
         if (res == sizeof(struct ag_payload_t))
         {
             res = nrf_read_ack_pl(&p);
@@ -123,13 +128,16 @@ void wireless_master_send_serial_char(char c)
             {
                 usb_write_serial(ag_payload->data.chr);
                 gpio_toggle(GPIOC, GPIO12);
+                return 1;
             }
         }
     }
+    return 0;
 }
 
-void wireless_master_find_slaves(uint8_t* count, uint8_t addrs[AG_MAX_ADDRS][AG_ADDR_LEN])
+int wireless_master_find_slaves(uint8_t* count, uint8_t addrs[AG_MAX_ADDRS][AG_ADDR_LEN])
 {
+    int fres = 0;
     int res;
     nrf_payload p;
     struct ag_payload_t* ag_payload = (struct ag_payload_t*)p.data;
@@ -152,12 +160,16 @@ void wireless_master_find_slaves(uint8_t* count, uint8_t addrs[AG_MAX_ADDRS][AG_
             {
                 memcpy(addrs[*count], ag_payload->data.addr, AG_ADDR_LEN);
                 (*count)++;
-                gpio_toggle(GPIOC, GPIO12);
+                fres = 1;
+                goto finish;
             }
         }
     }
+
+finish:
     // change back to standard address
     wireless_set_address(_addr);
+    return fres;
 }
 
 void wireless_poll(void)
