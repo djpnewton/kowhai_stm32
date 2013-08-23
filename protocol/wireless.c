@@ -13,7 +13,7 @@ struct ag_payload_t
     union
     {
         uint8_t chr;
-        uint8_t addr[1/*AG_ADDR_LEN*/]; //TODO: send with payload size greater then 2 not working =(
+        uint8_t addr[AG_ADDR_LEN];
     } data;
 };
 
@@ -30,7 +30,6 @@ static void _delay(unsigned long n)
 // this nrf library howto at http://gpio.kaltpost.de/?page_id=726
 static void _nrf_init(int mode, uint8_t addr[AG_ADDR_LEN])
 {
-    int i;
     int nrf_mode = NRF_MODE_PTX;
     static nrf_reg_buf buf;
 
@@ -77,7 +76,7 @@ static void _nrf_poll(void)
     nrf_payload p;
     p.size = sizeof(struct ag_payload_t);
     res = nrf_receive_blocking(&p);
-    if (res == sizeof(struct ag_payload_t))
+    if (res == p.size)
     {
         struct ag_payload_t* ag_payload = (struct ag_payload_t*)p.data;
         switch (ag_payload->cmd)
@@ -114,17 +113,20 @@ int wireless_master_send_serial_char(char c)
     nrf_payload p;
     struct ag_payload_t* ag_payload = (struct ag_payload_t*)p.data;
     p.size = sizeof(struct ag_payload_t);
+    //TODO: send with payload size greater then 2 not working =(
+    p.size = 2;
     ag_payload->cmd = AG_CMD_SERIALCHAR;
     ag_payload->data.chr = c;
     res = nrf_send_blocking(&p);
     if (res == sizeof(struct ag_payload_t))
+    if (res == p.size)
     {
         ag_payload->cmd = AG_CMD_ACKWAIT;
         res = nrf_send_blocking(&p);
-        if (res == sizeof(struct ag_payload_t))
+        if (res == p.size)
         {
             res = nrf_read_ack_pl(&p);
-            if (res == sizeof(struct ag_payload_t))
+            if (res == p.size)
             {
                 usb_write_serial(ag_payload->data.chr);
                 gpio_toggle(GPIOC, GPIO12);
@@ -149,14 +151,14 @@ int wireless_master_find_slaves(uint8_t* count, uint8_t addrs[AG_MAX_ADDRS][AG_A
     // send address request command
     ag_payload->cmd = AG_CMD_ADDR;
     res = nrf_send_blocking(&p);
-    if (res == sizeof(struct ag_payload_t))
+    if (res == p.size)
     {
         ag_payload->cmd = AG_CMD_ACKWAIT;
         res = nrf_send_blocking(&p);        
-        if (res == sizeof(struct ag_payload_t))
+        if (res == p.size)
         {
             res = nrf_read_ack_pl(&p);
-            if (res == sizeof(struct ag_payload_t))
+            if (res == p.size)
             {
                 memcpy(addrs[*count], ag_payload->data.addr, AG_ADDR_LEN);
                 (*count)++;
