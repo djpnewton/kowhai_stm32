@@ -100,6 +100,9 @@ void wireless_init(int mode, uint8_t addr[AG_ADDR_LEN])
 {
     _mode = mode;
     _nrf_init(mode, addr);
+    // TODO: these next two lines somehow make AG Ping work???
+    wireless_set_address(_discovery_address);
+    wireless_set_address(_addr);
 }
 
 void wireless_set_address(uint8_t addr[AG_ADDR_LEN])
@@ -113,12 +116,9 @@ int wireless_master_send_serial_char(char c)
     nrf_payload p;
     struct ag_payload_t* ag_payload = (struct ag_payload_t*)p.data;
     p.size = sizeof(struct ag_payload_t);
-    //TODO: send with payload size greater then 2 not working =(
-    p.size = 2;
     ag_payload->cmd = AG_CMD_SERIALCHAR;
     ag_payload->data.chr = c;
     res = nrf_send_blocking(&p);
-    if (res == sizeof(struct ag_payload_t))
     if (res == p.size)
     {
         ag_payload->cmd = AG_CMD_ACKWAIT;
